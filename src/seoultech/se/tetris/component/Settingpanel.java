@@ -19,23 +19,30 @@ public class Settingpanel extends JPanel{
 
     private Maincontainer maincontainer;
     private JPanel settingPanel;
-    private JPanel buttonPanel;
-    private JPanel windowSizePanel;
-    private JPanel keySettingPanel;
-    private JPanel resetScorePanel;
-    private JPanel colorBlindPanel;
-    private JPanel resetSettingPanel;
-    private JLabel exitButton;
-    private ArrayList<JPanel> selectList;
+    private OptionButton exitButton;
+    private OptionButton windowSizeOption;
+    private OptionButton keySettingOption;
+    private OptionButton resetScoreOption;
+    private OptionButton colorBlindOption;
+    private OptionButton resetSettingOption;
     private PlayerKeyListener playerKeyListener;
-    private int selected = 0;
-    private JLabel windowSizeOption;
-    private JLabel colorBlindOption;
     private Integer[] h_w;
     private int HEIGHT;
     private int WIDTH;
 
-    // TODO: 세팅 추가 시 지침: 1. JPanel 생성 후 settingPanel에 등록 2. selectList에 해당 Panel 등록 3. selectEnter 메소드에 기능 구현
+    /*
+    버튼 추가 시 지침
+    1. OptionButton 객체 생성
+    - OptionButton(Option 이름, Option 내용(없을 시 null 전달))
+    2. proteced void isPressed() 오버라이딩 하기
+    - 버튼이 눌렸을 때 발생되는 이벤트 함수를 구현하기.
+    3. 스태틱 함수 OptionButton.addButton(JPanel parent, OptionButton child, int index)으로 버튼 등록하기
+    - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (최대 10개 등록 가능)
+
+    기존의 등록 방식을 변경하여 위의 흐름대로만 설정하면 작동할 수 있도록 변경하였습니다.
+    기본적으로 OptionButton은 JPanel을 상속하므로, JPanel이 가지는 메소드도 전부 사용 가능합니다.
+    같은 방식으로 키 추가 리스트도 추가할 수 있습니다.
+     */
     public Settingpanel(Maincontainer maincontainer) {
         this.maincontainer = maincontainer;
         setLayout(null);
@@ -44,7 +51,6 @@ public class Settingpanel extends JPanel{
         h_w = maincontainer.setting.getWindowSize();
         HEIGHT = h_w[0]; WIDTH = h_w[1];
         int panelWidth = 0; int panelHeight = 0;
-        Dimension labelSize;
 
         settingPanel = new JPanel();
         settingPanel.setLayout(new GridBagLayout());
@@ -53,123 +59,111 @@ public class Settingpanel extends JPanel{
         settingPanel.setOpaque(false);
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
+
+            OptionButton.resetStaticField();
             // 테트리스 게임 화면의 크기를 조절 - 최소 3가지 이상 미리 정의된 크기.
-            windowSizePanel = new JPanel();
-            windowSizePanel.setLayout(new GridLayout(1, 0));
-            windowSizePanel.setBackground(changeColor(Color.GRAY));
-            windowSizePanel.setOpaque(true);
-
-                JLabel wspText = new JLabel("Window Option: ", SwingConstants.CENTER);
-                wspText.setFont(new Font("Courier", Font.BOLD, 16));
-                wspText.setForeground(changeColor(Color.BLACK));
-                String str = Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"));
-                windowSizeOption = new JLabel(str, SwingConstants.CENTER);
-                windowSizeOption.setFont(new Font("Courier", Font.BOLD, 16));
-                windowSizeOption.setForeground(changeColor(Color.BLACK));
-            
-            labelSize = wspText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            windowSizePanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            windowSizePanel.add(wspText);
-            windowSizePanel.add(windowSizeOption);
-            gbc.gridx = 0; gbc.gridy = 0; gbc.fill = GridBagConstraints.NONE;
-            settingPanel.add(windowSizePanel, gbc);
+            String str = Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"));
+            windowSizeOption = new OptionButton("Window Option: ", str) {
+                @Override
+                protected void isPressed() {
+                    switch (Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"))) {
+                        case "600X500":
+                            option.setText("750X625");
+                            maincontainer.setting.setWindowSize("750X625");;
+                            break;
+                        case "750X625":
+                            option.setText("900X750");
+                            maincontainer.setting.setWindowSize("900X750");
+                            break;
+                        case "900X750":
+                            option.setText("600X500");
+                            maincontainer.setting.setWindowSize("600X500");
+                            break;
+                    }
+                }
+            };
+            OptionButton.addButton(settingPanel, windowSizeOption);
             // 게임 조작을 위해 사용될 키를 설정
-            keySettingPanel = new JPanel();
-            keySettingPanel.setLayout(new GridLayout(1, 0));
-            keySettingPanel.setBackground(changeColor(Color.GRAY));
-            keySettingPanel.setOpaque(false);
-
-                JLabel kspText = new JLabel("Change Keys", SwingConstants.CENTER);
-                kspText.setFont(new Font("Courier", Font.BOLD, 16));
-                kspText.setForeground(changeColor(Color.BLACK));
-
-            labelSize = kspText.getPreferredSize();
-            panelWidth = labelSize.width + 20;
-            panelHeight = labelSize.height + 20;
-            keySettingPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            keySettingPanel.add(kspText);
-            gbc.gridx = 0; gbc.gridy = 1; gbc.fill = GridBagConstraints.NONE;
-            settingPanel.add(keySettingPanel, gbc);
+            keySettingOption = new OptionButton("Change Keys", null) {
+                @Override 
+                protected void isPressed() {
+                    Settingpanel.this.removeKeyListener(playerKeyListener);
+                    ChangeKeyPanel changeKeyPanel = new ChangeKeyPanel();
+                    changeKeyPanel.setBounds(0, 0, Settingpanel.this.getWidth(), Settingpanel.this.getHeight());
+                    Settingpanel.this.add(changeKeyPanel);
+                    Settingpanel.this.setComponentZOrder(changeKeyPanel, 0);
+                    changeKeyPanel.setFocusable(true);
+                    Settingpanel.this.revalidate();
+                    Settingpanel.this.repaint();
+                    changeKeyPanel.requestFocusInWindow();
+                }
+            };
+            OptionButton.addButton(settingPanel, keySettingOption);
             // 스코어 보드의 기록을 초기화
-            resetScorePanel = new JPanel();
-            resetScorePanel.setLayout(new GridLayout(1, 0));
-            resetScorePanel.setBackground(changeColor(Color.GRAY));
-            resetScorePanel.setOpaque(false);
-            resetScorePanel.setPreferredSize(new Dimension(200, 50));
-
-                JLabel rsText = new JLabel("Reset Scoreboard", SwingConstants.CENTER);
-                rsText.setFont(new Font("Courier", Font.BOLD, 16));
-                rsText.setForeground(changeColor(Color.BLACK));
-
-            labelSize = rsText.getPreferredSize();
-            panelWidth = labelSize.width + 20;
-            panelHeight = labelSize.height + 20;
-            resetScorePanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            resetScorePanel.add(rsText);
-            gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE;
-            settingPanel.add(resetScorePanel, gbc);
+            resetScoreOption = new OptionButton("Reset Scoreboard", null) {
+                @Override
+                protected void isPressed() {
+                    Path path = Paths.get("tetris_score.txt");
+                    try {
+                        Files.write(path, new ArrayList<String>());
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+            OptionButton.addButton(settingPanel, resetScoreOption);
             // 색맹 모드 켜고 끄기.
-            colorBlindPanel = new JPanel();
-            colorBlindPanel.setLayout(new GridLayout(1, 0));
-            colorBlindPanel.setBackground(changeColor(Color.GRAY));
-            colorBlindPanel.setOpaque(false);
-            colorBlindPanel.setPreferredSize(new Dimension(400, 50));
-
-                JLabel cbpText = new JLabel("Color Option: ", SwingConstants.CENTER);
-                cbpText.setFont(new Font("Courier", Font.BOLD, 16));
-                cbpText.setForeground(changeColor(Color.BLACK));
-                colorBlindOption = new JLabel(maincontainer.setting.getColorBlind(), SwingConstants.CENTER);
-                colorBlindOption.setFont(new Font("Courier", Font.BOLD, 16));
-                colorBlindOption.setForeground(changeColor(Color.BLACK));
-
-            labelSize = cbpText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            colorBlindPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            colorBlindPanel.add(cbpText);
-            colorBlindPanel.add(colorBlindOption);
-            gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE;
-            settingPanel.add(colorBlindPanel, gbc);   
+            str = maincontainer.setting.getColorBlind();
+            colorBlindOption = new OptionButton("Color Option: ", str) {
+                @Override 
+                protected void isPressed() {
+                    switch (maincontainer.setting.getColorBlind()) {
+                        case "Normal":
+                            option.setText("Protanopia");
+                            maincontainer.setting.setColorBlind("Protanopia");;
+                            break;
+                        case "Protanopia":
+                            option.setText("Deuteranopia");
+                            maincontainer.setting.setColorBlind("Deuteranopia");
+                            break;
+                        case "Deuteranopia":
+                            option.setText("Tritanopia");
+                            maincontainer.setting.setColorBlind("Tritanopia");
+                            break;
+                        case "Tritanopia":
+                            option.setText("Normal");
+                            maincontainer.setting.setColorBlind("Normal");
+                            break;
+                    }
+                }
+            };
+            OptionButton.addButton(settingPanel, colorBlindOption);
             //모든 설정으로 기본 설정으로 되돌리기.
-            resetSettingPanel = new JPanel();
-            resetSettingPanel.setLayout(new GridLayout(1, 0));
-            resetSettingPanel.setBackground(changeColor(Color.GRAY));
-            resetSettingPanel.setOpaque(false);
-            resetSettingPanel.setPreferredSize(new Dimension(230, 50));
-
-                JLabel rspText = new JLabel("Reset setting", SwingConstants.CENTER);
-                rspText.setFont(new Font("Courier", Font.BOLD, 16));
-                rspText.setForeground(changeColor(Color.BLACK));
-
-            labelSize = rspText.getPreferredSize();
-            panelWidth = labelSize.width + 20;
-            panelHeight = labelSize.height + 20;
-            resetSettingPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            resetSettingPanel.add(rspText);
-            gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.NONE;
-            settingPanel.add(resetSettingPanel, gbc);
-
-        buttonPanel = new JPanel();
-        buttonPanel.setLayout(new GridLayout(1, 1, 0, 0));
-        buttonPanel.setBackground(changeColor(Color.GRAY));
-        buttonPanel.setOpaque(false);
-
-            exitButton = new JLabel("Save and Exit", SwingConstants.CENTER);
-            exitButton.setFont(new Font("Courier", Font.BOLD, 16));
-            exitButton.setForeground(changeColor(Color.BLACK));
-            exitButton.setOpaque(false);
-        
-        labelSize = exitButton.getPreferredSize();
-        panelWidth = labelSize.width + 20;
-        panelHeight = labelSize.height + 20;
-        buttonPanel.setBounds((WIDTH-panelWidth)/2, (3*(HEIGHT-20)/4+10)+((HEIGHT-10)-(3*(HEIGHT-20)/4+10)-panelHeight)/2, panelWidth, panelHeight);
-        buttonPanel.add(exitButton);
-        selectList = new ArrayList<>(java.util.List.of(windowSizePanel, keySettingPanel, resetScorePanel, colorBlindPanel, resetSettingPanel, buttonPanel));
+            resetSettingOption = new OptionButton("Reset setting", null) {
+                @Override 
+                protected void isPressed() {
+                    maincontainer.setting.clearSetting();
+                    windowSizeOption.option.setText(Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X")));
+                    colorBlindOption.option.setText(maincontainer.setting.getColorBlind());
+                    Settingpanel.this.revalidate();
+                    Settingpanel.this.repaint();
+                }
+            };
+            OptionButton.addButton(settingPanel, resetSettingOption);
 
         add(settingPanel);
-        add(buttonPanel);
+
+        exitButton = new OptionButton("Save and Exit", null) {
+            @Override 
+            protected void isPressed() {
+                maincontainer.setting.exportSetting();
+                maincontainer.exitSettingEnterStart();
+            }
+        };
+        panelWidth = (int) exitButton.getPreferredSize().getWidth();
+        panelHeight = (int) exitButton.getPreferredSize().getHeight();
+        exitButton.setBounds((WIDTH-panelWidth)/2, (3*(HEIGHT-20)/4+10)+((HEIGHT-10)-(3*(HEIGHT-20)/4+10)-panelHeight)/2, panelWidth, panelHeight);
+        OptionButton.addButton(this, exitButton);
 
         playerKeyListener = new PlayerKeyListener();
 		addKeyListener(playerKeyListener);
@@ -179,8 +173,7 @@ public class Settingpanel extends JPanel{
 
     private class PlayerKeyListener implements KeyListener {
 		@Override
-		public void keyTyped(KeyEvent e) {
-		}
+		public void keyTyped(KeyEvent e) {}
 
 		@Override
 		public void keyPressed(KeyEvent e) {
@@ -198,310 +191,121 @@ public class Settingpanel extends JPanel{
 		}
 
 		@Override
-		public void keyReleased(KeyEvent e) {
-		}
+		public void keyReleased(KeyEvent e) {}
 	}
 
     private void selectUp() {
-        selectList.get(selected).setOpaque(false);
-        if (selected <= 0) {
-            selected = selectList.size() - 1;
-        } else {
-            selected--;
-        }
-        selectList.get(selected).setOpaque(true);
+        OptionButton.getSelectedButton().setOpaque(false);
+        OptionButton.reduceCurrentSelected();
+        OptionButton.getSelectedButton().setOpaque(true);
         this.revalidate();
         this.repaint();
         return;
     }
     private void selectDown() {
-        selectList.get(selected).setOpaque(false);
-        if (selected >= selectList.size() - 1) {
-            selected = 0;
-        } else {
-            selected++;
-        }
-        selectList.get(selected).setOpaque(true);
+        OptionButton.getSelectedButton().setOpaque(false);
+        OptionButton.addCurrnetSelected();
+        OptionButton.getSelectedButton().setOpaque(true);
         this.revalidate();
         this.repaint();
         return;
     }
     private void selectEnter() {
-        switch (selected) {
-            case 0:
-                changeWindowSizeOption();
-                break;
-            case 1:
-                changeKeySettingOption();
-                break;
-            case 2:
-                resetScore();
-                break;
-            case 3:
-                changeColorBlindOption();
-                break;
-            case 4:
-                resetSetting();
-                break;
-            case 5:
-                maincontainer.setting.exportSetting();
-                maincontainer.exitSettingEnterStart();
-                break;
-        }
-    }
-
-    private void changeWindowSizeOption() {
-        switch (Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"))) {
-            case "600X500":
-                windowSizeOption.setText("750X625");
-                maincontainer.setting.setWindowSize("750X625");;
-                break;
-            case "750X625":
-                windowSizeOption.setText("900X750");
-                maincontainer.setting.setWindowSize("900X750");
-                break;
-            case "900X750":
-                windowSizeOption.setText("600X500");
-                maincontainer.setting.setWindowSize("600X500");
-                break;
-        }
-    }
-
-    private void changeKeySettingOption() {
-        removeKeyListener(playerKeyListener);
-                ChangeKeyPanel changeKeyPanel = new ChangeKeyPanel(this);
-                changeKeyPanel.setBounds(0, 0, this.getWidth(), this.getHeight());
-                add(changeKeyPanel);
-                setComponentZOrder(changeKeyPanel, 0);
-                changeKeyPanel.setFocusable(true);
-                revalidate();
-                repaint();
-                changeKeyPanel.requestFocusInWindow();
-    }
-
-    private void resetScore() {
-        Path path = Paths.get("tetris_score.txt");
-        try {
-            Files.write(path, new ArrayList<String>());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private void changeColorBlindOption() {
-        switch (maincontainer.setting.getColorBlind()) {
-            case "Normal":
-                colorBlindOption.setText("Protanopia");
-                maincontainer.setting.setColorBlind("Protanopia");;
-                break;
-            case "Protanopia":
-                colorBlindOption.setText("Deuteranopia");
-                maincontainer.setting.setColorBlind("Deuteranopia");
-                break;
-            case "Deuteranopia":
-                colorBlindOption.setText("Tritanopia");
-                maincontainer.setting.setColorBlind("Tritanopia");
-                break;
-            case "Tritanopia":
-                colorBlindOption.setText("Normal");
-                maincontainer.setting.setColorBlind("Normal");
-                break;
-        }
-    }
-
-    private void resetSetting() {
-        maincontainer.setting.clearSetting();
-        windowSizeOption.setText(Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X")));
-        colorBlindOption.setText(maincontainer.setting.getColorBlind());
-        revalidate();
-        repaint();
+        OptionButton.getSelectedButton().isPressed();
     }
 
     private class ChangeKeyPanel extends JPanel {
-        private Settingpanel settingpanel;
-        private int selected = 0;
-        private ArrayList<JPanel> selectList;
-        private ArrayList<JLabel> selectOption;
-        private JPanel rotatePanel;
-        private JPanel downPanel;
-        private JPanel leftPanel;
-        private JPanel rightPanel;
-        private JPanel pausePanel;
-        private JPanel hardDropPanel;
-        private JPanel exitPanel;
-        private JLabel rotateOption;
-        private JLabel downOption;
-        private JLabel leftOption;
-        private JLabel rightOption;
-        private JLabel pauseOption;
-        private JLabel hardDropOption;
+
+        private ChangeKeyButton rotateOption;
+        private ChangeKeyButton downOption;
+        private ChangeKeyButton leftOption;
+        private ChangeKeyButton rightOption;
+        private ChangeKeyButton pauseOption;
+        private ChangeKeyButton hardDropOption;
+        private ChangeKeyButton exitOption;
         private Integer[] currentKey;
         private PlayerKeyListener2 keylistener2;
          
-        public ChangeKeyPanel(Settingpanel settingpanel) {
-            this.settingpanel = settingpanel;
+        public ChangeKeyPanel() {
             setLayout(null);
             setBackground(changeColor(Color.LIGHT_GRAY));
             setBorder(BorderFactory.createLineBorder(changeColor(Color.GRAY), 1));
             JPanel keyList = new JPanel();
             add(keyList);
-            keyList.setBounds(10, 10, settingpanel.settingPanel.getWidth(), settingpanel.settingPanel.getHeight());
+            keyList.setBounds(10, 10, settingPanel.getWidth(), settingPanel.getHeight());
             keyList.setLayout(new GridBagLayout());
-            currentKey = settingpanel.maincontainer.setting.getKeySetting();
-            int panelWidth = 0; int panelHeight = 0;
-            Dimension labelSize;
+            currentKey = maincontainer.setting.getKeySetting();
+            ChangeKeyButton.resetStaticField();
 
-            GridBagConstraints gbc = new GridBagConstraints();
+            rotateOption = new ChangeKeyButton("Rotate: ", KeyEvent.getKeyText(currentKey[0])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, rotateOption);
 
-            rotatePanel = new JPanel();
-            rotatePanel.setLayout(new GridLayout(1, 0));
-            rotatePanel.setBackground(changeColor(Color.GRAY));
-            rotatePanel.setOpaque(true);
+            downOption = new ChangeKeyButton("Down: ", KeyEvent.getKeyText(currentKey[1])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, downOption);
 
-                JLabel rotateText = new JLabel("Rotate: ", SwingConstants.CENTER);
-                rotateText.setFont(new Font("Courier", Font.BOLD, 16));
-                rotateText.setForeground(changeColor(Color.BLACK));
-                rotateOption = new JLabel(KeyEvent.getKeyText(currentKey[0]), SwingConstants.CENTER);
-                rotateOption.setFont(new Font("Courier", Font.BOLD, 16));
-                rotateOption.setForeground(changeColor(Color.BLACK));
+            leftOption = new ChangeKeyButton("Left: ", KeyEvent.getKeyText(currentKey[2])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, leftOption);
 
-            labelSize = rotateText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            rotatePanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            rotatePanel.add(rotateText);
-            rotatePanel.add(rotateOption);
-            gbc.gridx = 0; gbc.gridy = 0; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(rotatePanel, gbc);
+            rightOption = new ChangeKeyButton("Right: ", KeyEvent.getKeyText(currentKey[3])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, rightOption);
 
-            downPanel = new JPanel();
-            downPanel.setLayout(new GridLayout(1, 0));
-            downPanel.setBackground(changeColor(Color.GRAY));
-            downPanel.setOpaque(false);
+            pauseOption = new ChangeKeyButton("Pause: ", KeyEvent.getKeyText(currentKey[4])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, pauseOption);
 
-                JLabel downText = new JLabel("Down: ", SwingConstants.CENTER);
-                downText.setFont(new Font("Courier", Font.BOLD, 16));
-                downText.setForeground(changeColor(Color.BLACK));
-                downOption = new JLabel(KeyEvent.getKeyText(currentKey[1]), SwingConstants.CENTER);
-                downOption.setFont(new Font("Courier", Font.BOLD, 16));
-                downOption.setForeground(changeColor(Color.BLACK));
+            hardDropOption = new ChangeKeyButton("Hard Drop: ", KeyEvent.getKeyText(currentKey[5])) {
+                @Override 
+                protected void isPressed() {
+                    changeKey(index);
+                }
+            };
+            ChangeKeyButton.addButton(keyList, hardDropOption);
 
-            labelSize = downText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            downPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            downPanel.add(downText);
-            downPanel.add(downOption);
-            gbc.gridx = 0; gbc.gridy = 1; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(downPanel, gbc);
+            exitOption = new ChangeKeyButton("Save and Exit", null) {
+                @Override 
+                protected void isPressed() {
+                    String str = "ROTATE=" + currentKey[0] 
+                                + ",DOWN=" + currentKey[1] 
+                                + ",LEFT=" + currentKey[2] 
+                                + ",RIGHT=" + currentKey[3] 
+                                + ",PAUSE=" + currentKey[4] 
+                                + ",HARD_DROP=" + currentKey[5];
+                    Settingpanel.this.maincontainer.setting.setKeySetting(str);
+                    removeKeyListener(keylistener2);
+                    Settingpanel.this.addKeyListener(Settingpanel.this.playerKeyListener);
+                    Settingpanel.this.remove(ChangeKeyPanel.this);
+                    Settingpanel.this.revalidate();
+                    Settingpanel.this.repaint();
+                    Settingpanel.this.setFocusable(true);
+                    Settingpanel.this.requestFocusInWindow();
+                }
+            };
+            ChangeKeyButton.addButton(keyList, exitOption);
 
-            leftPanel = new JPanel();
-            leftPanel.setLayout(new GridLayout(1, 0));
-            leftPanel.setBackground(changeColor(Color.GRAY));
-            leftPanel.setOpaque(false);
-
-                JLabel leftText = new JLabel("Left: ", SwingConstants.CENTER);
-                leftText.setFont(new Font("Courier", Font.BOLD, 16));
-                leftText.setForeground(changeColor(Color.BLACK));
-                leftOption = new JLabel(KeyEvent.getKeyText(currentKey[2]), SwingConstants.CENTER);
-                leftOption.setFont(new Font("Courier", Font.BOLD, 16));
-                leftOption.setForeground(changeColor(Color.BLACK));
-
-            labelSize = leftText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            leftPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            leftPanel.add(leftText);
-            leftPanel.add(leftOption);
-            gbc.gridx = 0; gbc.gridy = 2; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(leftPanel, gbc);
-
-            rightPanel = new JPanel();
-            rightPanel.setLayout(new GridLayout(1, 0));
-            rightPanel.setBackground(changeColor(Color.GRAY));
-            rightPanel.setOpaque(false);
-
-                JLabel rightText = new JLabel("Right: ", SwingConstants.CENTER);
-                rightText.setFont(new Font("Courier", Font.BOLD, 16));
-                rightText.setForeground(changeColor(Color.BLACK));
-                rightOption = new JLabel(KeyEvent.getKeyText(currentKey[3]), SwingConstants.CENTER);
-                rightOption.setFont(new Font("Courier", Font.BOLD, 16));
-                rightOption.setForeground(changeColor(Color.BLACK));
-
-            labelSize = rightText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            rightPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            rightPanel.add(rightText);
-            rightPanel.add(rightOption);
-            gbc.gridx = 0; gbc.gridy = 3; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(rightPanel, gbc);
-
-            pausePanel = new JPanel();
-            pausePanel.setLayout(new GridLayout(1, 0));
-            pausePanel.setBackground(changeColor(Color.GRAY));
-            pausePanel.setOpaque(false);
-
-                JLabel pauseText = new JLabel("Pause: ", SwingConstants.CENTER);
-                pauseText.setFont(new Font("Courier", Font.BOLD, 16));
-                pauseText.setForeground(changeColor(Color.BLACK));
-                pauseOption = new JLabel(KeyEvent.getKeyText(currentKey[4]), SwingConstants.CENTER);
-                pauseOption.setFont(new Font("Courier", Font.BOLD, 16));
-                pauseOption.setForeground(changeColor(Color.BLACK));
-
-            labelSize = pauseText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            pausePanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            pausePanel.add(pauseText);
-            pausePanel.add(pauseOption);
-            gbc.gridx = 0; gbc.gridy = 4; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(pausePanel, gbc);
-
-            hardDropPanel = new JPanel();
-            hardDropPanel.setLayout(new GridLayout(1, 0));
-            hardDropPanel.setBackground(changeColor(Color.GRAY));
-            hardDropPanel.setOpaque(false);
-
-                JLabel hardDropText = new JLabel("Hard Drop: ", SwingConstants.CENTER);
-                hardDropText.setFont(new Font("Courier", Font.BOLD, 16));
-                hardDropText.setForeground(changeColor(Color.BLACK));
-
-            hardDropOption = new JLabel(
-            KeyEvent.getKeyText(currentKey[5]),
-            SwingConstants.CENTER
-            );
-            hardDropOption.setFont(new Font("Courier", Font.BOLD, 16));
-            hardDropOption.setForeground(changeColor(Color.BLACK));
-
-            labelSize = hardDropText.getPreferredSize();
-            panelWidth = labelSize.width * 2 + 20;
-            panelHeight = labelSize.height + 20;
-            hardDropPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            hardDropPanel.add(hardDropText);
-            hardDropPanel.add(hardDropOption);
-            gbc.gridx = 0; gbc.gridy = 5; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(hardDropPanel, gbc);
-
-            exitPanel = new JPanel();
-            exitPanel.setLayout(new GridLayout(1, 0));
-            exitPanel.setBackground(changeColor(Color.GRAY));
-            exitPanel.setOpaque(false);
-
-                JLabel exitText = new JLabel("Save and Exit", SwingConstants.CENTER);
-                exitText.setFont(new Font("Courier", Font.BOLD, 16));
-                exitText.setForeground(changeColor(Color.BLACK));
-
-            labelSize = exitText.getPreferredSize();
-            panelWidth = labelSize.width + 20;
-            panelHeight = labelSize.height + 20;
-            exitPanel.setPreferredSize(new Dimension(panelWidth, panelHeight));
-            exitPanel.add(exitText);
-            gbc.gridx = 0; gbc.gridy = 6; gbc.fill = GridBagConstraints.NONE;
-            keyList.add(exitPanel, gbc);
-
-            selectList = new ArrayList<>(java.util.List.of(rotatePanel, downPanel, leftPanel, rightPanel, pausePanel, hardDropPanel, exitPanel));
-            selectOption = new ArrayList<>(java.util.List.of(rotateOption, downOption, leftOption, rightOption, pauseOption, hardDropOption));
             keylistener2 = new PlayerKeyListener2();
             this.addKeyListener(keylistener2);
             setFocusable(true);
@@ -510,95 +314,54 @@ public class Settingpanel extends JPanel{
 
         private class PlayerKeyListener2 implements KeyListener {
 		    @Override
-            public void keyTyped(KeyEvent e) {
-            }
+            public void keyTyped(KeyEvent e) {}
 
             @Override
             public void keyPressed(KeyEvent e) {
                 switch(e.getKeyCode()) {
-                case KeyEvent.VK_DOWN:
-                    selectDown();
-                    break;
-                case KeyEvent.VK_UP:
-                    selectUp();
-                    break;
-                case KeyEvent.VK_ENTER:
-                    selectEnter();
-                    break;
+                    case KeyEvent.VK_DOWN:
+                        selectDown();
+                        break;
+                    case KeyEvent.VK_UP:
+                        selectUp();
+                        break;
+                    case KeyEvent.VK_ENTER:
+                        selectEnter();
+                        break;
                 }
             }
 
             @Override
-            public void keyReleased(KeyEvent e) {
-            }
+            public void keyReleased(KeyEvent e) {}
         }
+
         private void selectDown() {
-            selectList.get(selected).setOpaque(false);
-            if (selected >= selectList.size() - 1) {
-                selected = 0;
-            } else {
-                selected++;
-            }
-            selectList.get(selected).setOpaque(true);
+            ChangeKeyButton.getSelectedButton().setOpaque(false);
+            ChangeKeyButton.addCurrnetSelected();
+            ChangeKeyButton.getSelectedButton().setOpaque(true);
             revalidate();
             repaint();
         }
+
         private void selectUp() {
-            selectList.get(selected).setOpaque(false);
-            if (selected <= 0) {
-                selected = selectList.size() - 1;
-            } else {
-                selected--;
-            }
-            selectList.get(selected).setOpaque(true);
+            ChangeKeyButton.getSelectedButton().setOpaque(false);
+            ChangeKeyButton.reduceCurrentSelected();
+            ChangeKeyButton.getSelectedButton().setOpaque(true);
             revalidate();
             repaint();
         }
+
         private void selectEnter() {
-            switch (selected) {
-                case 0:
-                    changeKey(0);
-                    break;
-                case 1:
-                    changeKey(1);
-                    break;
-                case 2:
-                    changeKey(2);
-                    break;
-                case 3:
-                    changeKey(3);
-                    break;
-                case 4:
-                    changeKey(4);
-                    break;
-                case 5:
-                    changeKey(5);
-                    break;
-                case 6:
-                    String str = "ROTATE=" + currentKey[0] 
-                                + ",DOWN=" + currentKey[1] 
-                                + ",LEFT=" + currentKey[2] 
-                                + ",RIGHT=" + currentKey[3] 
-                                + ",PAUSE=" + currentKey[4] 
-                                + ",HARD_DROP=" + currentKey[5];
-                    settingpanel.maincontainer.setting.setKeySetting(str);
-                    removeKeyListener(keylistener2);
-                    settingpanel.addKeyListener(settingpanel.playerKeyListener);
-                    settingpanel.remove(this);
-                    settingpanel.revalidate();
-                    settingpanel.repaint();
-                    settingpanel.setFocusable(true);
-                    settingpanel.requestFocusInWindow();
-                    break;
-            }
+            ChangeKeyButton.getSelectedButton().isPressed();
         }
+
         private void changeKey(int idx) {
             removeKeyListener(keylistener2);
             JPanel display = new JPanel();
             display.setLayout(new GridLayout());
             this.add(display);
-            int w = settingpanel.settingPanel.getWidth();
-            int h = settingpanel.settingPanel.getHeight();
+            int w = settingPanel.getWidth();
+            int h = settingPanel.getHeight();
             display.setBounds(10+w/4-25, 10+h/4, w/2+50, h/2);
             display.setBackground(changeColor(Color.LIGHT_GRAY));
             JLabel text = new JLabel("Press Key to Change", SwingConstants.CENTER);
@@ -619,7 +382,7 @@ public class Settingpanel extends JPanel{
                     }
                     if (!Arrays.asList(currentKey).contains(newKey) || newKey == currentKey[idx]) {
                         currentKey[idx] = newKey;
-                        selectOption.get(idx).setText(keyName);
+                        ChangeKeyButton.getSelectedButton().option.setText(keyName);
                         removeKeyListener(this);
                         addKeyListener(keylistener2);
                         Container parent = display.getParent();
@@ -637,6 +400,138 @@ public class Settingpanel extends JPanel{
             };
             addKeyListener(customKeyListener);
             requestFocusInWindow();
+        }
+
+        private class ChangeKeyButton extends JPanel {
+
+            protected JLabel text;
+            protected JLabel option;
+            protected int index = 0;
+            private static int numberOfOptions = 0;
+            private static int currentSelected = 0;
+            private static ArrayList<ChangeKeyButton> buttonList;
+
+            public ChangeKeyButton(String optionName, String optionContent) {
+                setLayout(new GridLayout(1, 0));
+                setBackground(changeColor(Color.GRAY));
+                if (numberOfOptions == 0) setOpaque(true);
+                else setOpaque(false);
+
+                text = new JLabel(optionName, SwingConstants.CENTER);
+                text.setFont(new Font("Courier", Font.BOLD, 16));
+                text.setForeground(changeColor(Color.BLACK));
+                add(text);
+                if (optionContent != null) {
+                    option = new JLabel(optionContent, SwingConstants.CENTER);
+                    option.setFont(new Font("Courier", Font.BOLD, 16));
+                    option.setForeground(changeColor(Color.BLACK));
+                    add(option);
+                }
+
+                Dimension labelSize = text.getPreferredSize();
+                int panelWidth = (optionContent != null) ? (labelSize.width * 2 + 20) : (labelSize.width + 20);
+                int panelHeight = labelSize.height + 20;
+                setPreferredSize(new Dimension(panelWidth, panelHeight));
+            }
+
+            protected void isPressed() {}
+
+            protected static void addButton(JPanel parent, ChangeKeyButton child) {
+                if (numberOfOptions > 10) return;
+                GridBagConstraints gbc = new GridBagConstraints();
+                gbc.gridx = 0; gbc.gridy = numberOfOptions; gbc.fill = GridBagConstraints.NONE;
+                parent.add(child, gbc);
+                child.index = numberOfOptions;
+                numberOfOptions++;
+                buttonList.add(child);
+            }
+
+            protected static void addCurrnetSelected() {
+                if (currentSelected >= numberOfOptions - 1) {
+                    currentSelected = 0;
+                } else currentSelected++;
+            }
+
+            protected static void reduceCurrentSelected() {
+                if (currentSelected <= 0) {
+                    currentSelected = numberOfOptions - 1;
+                } else currentSelected--;
+            }
+
+            protected static ChangeKeyButton getSelectedButton() {
+                return buttonList.get(currentSelected);
+            }
+
+            protected static void resetStaticField() {
+                numberOfOptions = 0;
+                currentSelected = 0;
+                buttonList = new ArrayList<>();
+            }
+        }
+    }
+
+    private class OptionButton extends JPanel {
+
+        protected JLabel text;
+        protected JLabel option;
+        private static int numberOfOptions = 0;
+        private static int currentSelected = 0;
+        private static ArrayList<OptionButton> buttonList;
+
+        public OptionButton(String optionName, String optionContent) {
+            setLayout(new GridLayout(1, 0));
+            setBackground(changeColor(Color.GRAY));
+            if (numberOfOptions == 0) setOpaque(true);
+            else setOpaque(false);
+
+            text = new JLabel(optionName, SwingConstants.CENTER);
+            text.setFont(new Font("Courier", Font.BOLD, 16));
+            text.setForeground(changeColor(Color.BLACK));
+            add(text);
+            if (optionContent != null) {
+                option = new JLabel(optionContent, SwingConstants.CENTER);
+                option.setFont(new Font("Courier", Font.BOLD, 16));
+                option.setForeground(changeColor(Color.BLACK));
+                add(option);
+            }
+
+            Dimension labelSize = text.getPreferredSize();
+            int panelWidth = (optionContent != null) ? (labelSize.width * 2 + 20) : (labelSize.width + 20);
+            int panelHeight = labelSize.height + 20;
+            setPreferredSize(new Dimension(panelWidth, panelHeight));
+        }
+
+        protected void isPressed() {}
+
+        protected static void addButton(JPanel parent, OptionButton child) {
+            if (numberOfOptions > 10) return;
+            GridBagConstraints gbc = new GridBagConstraints();
+            gbc.gridx = 0; gbc.gridy = numberOfOptions; gbc.fill = GridBagConstraints.NONE;
+            parent.add(child, gbc);
+            numberOfOptions++;
+            buttonList.add(child);
+        }
+
+        protected static void addCurrnetSelected() {
+            if (currentSelected >= numberOfOptions - 1) {
+                currentSelected = 0;
+            } else currentSelected++;
+        }
+
+        protected static void reduceCurrentSelected() {
+            if (currentSelected <= 0) {
+                currentSelected = numberOfOptions - 1;
+            } else currentSelected--;
+        }
+
+        protected static OptionButton getSelectedButton() {
+            return buttonList.get(currentSelected);
+        }
+
+        protected static void resetStaticField() {
+            numberOfOptions = 0;
+            currentSelected = 0;
+            buttonList = new ArrayList<>();
         }
     }
 }
