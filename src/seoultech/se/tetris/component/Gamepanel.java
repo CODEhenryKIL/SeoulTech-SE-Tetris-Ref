@@ -35,7 +35,6 @@ public class Gamepanel extends JPanel{
     private Path path;
     private JPanel pausepanel;
     private JPanel gameOverPanel;
-    private Integer[] h_w;
     private int HEIGHT;
     private int WIDTH;
     private KeyListener playerKeyListener;
@@ -44,8 +43,7 @@ public class Gamepanel extends JPanel{
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
-        h_w = maincontainer.setting.getWindowSize();
-        HEIGHT = h_w[0]; WIDTH = h_w[1];
+        HEIGHT = maincontainer.getHeight(); WIDTH = maincontainer.getWidth();
 
         board = new Board(this);
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);

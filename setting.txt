@@ -1,5 +1,5 @@
-windowSize:600X500
 keySetting:ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32
 resetScore:false
 colorBlind:Normal
+windowSize:750X625
 

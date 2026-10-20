@@ -24,7 +24,6 @@ public class Scoreboardpanel extends JPanel{
     private ArrayList<GameScore> loadedScores;
     private JTextPane scorepanel;
     private PlayerKeyListener playerKeyListener;
-    private Integer[] h_w;
     private int HEIGHT;
     private int WIDTH;
 
@@ -34,8 +33,8 @@ public class Scoreboardpanel extends JPanel{
         setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
         this.maincontainer = maincontainer;
 
-        h_w = maincontainer.setting.getWindowSize();
-        HEIGHT = h_w[0]; WIDTH = h_w[1];
+        HEIGHT = maincontainer.getHeight();
+        WIDTH = maincontainer.getWidth();
 
         scorepanel = new JTextPane();
         scorepanel.setEditable(false);
