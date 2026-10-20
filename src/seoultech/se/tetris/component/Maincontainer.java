@@ -212,6 +212,7 @@ public class Maincontainer extends JFrame{
                         if (tokens.length == 2) {
                             String key = tokens[0].trim();
                             String value = tokens[1].trim();
+                            if (!currentSettingMap.containsKey(key)) continue;
                             if (key.equals("keySetting")) {
                                 if (isValidKeySetting(value)) currentSettingMap.get(key).modifySetting(value);;
                             } else {
@@ -282,7 +283,7 @@ public class Maincontainer extends JFrame{
             private ArrayList<String> list;
 
             protected SettingComponent(ArrayList<String> list) {
-                this.list = list;
+                this.list = new ArrayList<>(list);
                 numberOfList = list.size();
             }
 
