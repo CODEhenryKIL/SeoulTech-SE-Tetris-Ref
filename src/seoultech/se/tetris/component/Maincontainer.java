@@ -10,14 +10,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 
 // 창을 구성하는 클래스입니다.
 public class Maincontainer extends JFrame{
-    private static final String DEFAULT_WINDOW_SIZE = "600X500";
-    private static final String DEFAULT_KEY_SETTING = "ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32"; 
+
     private static int HEIGHT = 600;
     private static int WIDTH = 500;
     protected static int ROTATE = 38;
@@ -37,6 +36,11 @@ public class Maincontainer extends JFrame{
 
     public Maincontainer() {
         setting = new Setting();
+        setTitle("SeoulTech SE Tetris");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setResizable(false);
+        cardLayout = new CardLayout();
+        mainPanel = new JPanel(cardLayout);
         applySetting();
     }
 
@@ -79,13 +83,14 @@ public class Maincontainer extends JFrame{
     }
     protected void exitSettingEnterStart() {
         startPanel = new Startpanel(this);
-        remove(mainPanel);
+        mainPanel.remove(settingPanel);
+        remove(mainPanel); // GC 발생
         applySetting();
         mainPanel.add(startPanel, "StartScreen");
-        mainPanel.remove(settingPanel);
+        mainPanel.setComponentZOrder(startPanel, 0);
         mainPanel.revalidate();
         mainPanel.repaint();
-        cardLayout.show(mainPanel, "StartScreen");
+        //cardLayout.show(mainPanel, "StartScreen");
         startPanel.requestFocusInWindow();
     }
     // Scoreboard 버튼 상호작용 함수
@@ -109,25 +114,25 @@ public class Maincontainer extends JFrame{
     }
 
     private void applySetting() {
-        Integer[] h_w = setting.getWindowSize();
-        HEIGHT = h_w[0]; WIDTH = h_w[1];
-        Integer[] keys = setting.getKeySetting();
+        String[] h_w = setting.currentSettingMap.get("windowSize").getCurrentSetting().split("X");
+        HEIGHT = Integer.parseInt(h_w[0]); WIDTH = Integer.parseInt(h_w[1]);
+        String[] parts = setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
+        Integer[] keys = new Integer[6];
+        for (int i = 0; i < 6; i++) keys[i] = Integer.parseInt(parts[i].split("=")[1]);
         ROTATE = keys[0]; DOWN = keys[1]; LEFT = keys[2]; RIGHT = keys[3]; PAUSE = keys[4]; HARD_DROP = keys[5];
-        colorPalette = setting.getColorBlind();
-
-        setTitle("SeoulTech SE Tetris"); // 프로그램 이름 설정
-        setSize(WIDTH, HEIGHT); // 띄워질 터미널 창 크기 지정
-        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE); // 터미널 닫기 설정
-        setResizable(false); // 터미널 창 크기를 바꾸지 못하게 고정
+        colorPalette = setting.currentSettingMap.get("colorBlind").getCurrentSetting();
         
-        cardLayout = new CardLayout();
-        mainPanel = new JPanel(cardLayout); // container에 띄우기 위한 빈 panel
+        // container에 띄우기 위한 빈 panel
         mainPanel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         mainPanel.setBackground(Color.BLACK);
-        add(mainPanel, BorderLayout.CENTER); // container에 mainPanel 추가
+        mainPanel.setOpaque(true);
+        add(mainPanel); // container에 mainPanel 추가
         pack();
         setVisible(true);
     }
+
+    public int getWidth() {return WIDTH;}
+    public int getHeight() {return HEIGHT;}
 
     public static Color changeColor(Color exColor) {
         Color newColor = exColor;
@@ -173,12 +178,25 @@ public class Maincontainer extends JFrame{
     }
 
     public class Setting {
-
-        private Map<String, String> settingMap;
-        private final ArrayList<String> settingList = new ArrayList<>(List.of("windowSize","keySetting","resetScore","colorBlind")); //ISSUE: resetScore의 값이 true가 되는 일은 없을 것 같아서 없애도 될 것 같아요
+        /*
+        세팅 추가 시 지침
+        1. validSettingMap에 설정 값으로 들어올 수 있는 값을 전부 넣기
+        - 설정의 이름이 될 값을 String으로 지정해야 합니다.
+        - 설정의 초기값이 될 값을 ArrayList<String> 목록의 가장 처음으로 할당해야 합니다.
+        - 설정 변경은 항상 ArrayList<>에 담긴 순서대로 변경됩니다.
+        2. key와 관련된 값은 기존에 쓰던 별도의 메소드를 그대로 사용
+        - 만약 추가나 변경이 필요할 경우, isValidKeySetting()을 고쳐주시길 바랍니다.
+        */
+        protected LinkedHashMap<String, SettingComponent> currentSettingMap;
+        private static final LinkedHashMap<String, ArrayList<String>> validSettingMap = new LinkedHashMap<>(Map.of(
+            "windowSize", new ArrayList<>(List.of("600X500","750X625","900X750")),
+            "keySetting", new ArrayList<>(List.of("ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32")),
+            "resetScore", new ArrayList<>(List.of("false")),
+            "colorBlind", new ArrayList<>(List.of("Normal","Protanopia","Deuteranopia","Tritanopia"))
+        ));
 
         public Setting() {
-            settingMap = new HashMap<>();
+            currentSettingMap = new LinkedHashMap<>();
             clearSetting();
             decodeSetting();
         }
@@ -195,45 +213,15 @@ public class Maincontainer extends JFrame{
                             String key = tokens[0].trim();
                             String value = tokens[1].trim();
                             if (key.equals("keySetting")) {
-                                value = addDefaultHardDropKey(value);
-                            }
-                            if (settingList.contains(key) && isValidSetting(key, value)) {
-                                settingMap.put(key, value);
+                                if (isValidKeySetting(value)) currentSettingMap.get(key).modifySetting(value);;
+                            } else {
+                                currentSettingMap.get(key).findApplySetting(value);;
                             }
                         }
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
-            }
-        }
-
-        private String addDefaultHardDropKey(String value) {
-            String[] parts = value.split(",", -1);
-            if (parts.length != 5) return value;
-
-            String candidate = value + ",HARD_DROP=" + KeyEvent.VK_SPACE;
-            if (isValidKeySetting(candidate)) return candidate;
-
-            for (int keyCode = KeyEvent.VK_A; keyCode <= KeyEvent.VK_Z; keyCode++) {
-                candidate = value + ",HARD_DROP=" + keyCode;
-                if (isValidKeySetting(candidate)) return candidate;
-            }
-            return value;
-        }
-
-        private boolean isValidSetting(String key, String value) {
-            switch (key) {
-                case "windowSize":
-                    return value.equals("600X500") || value.equals("750X625") || value.equals("900X750");
-                case "keySetting":
-                    return isValidKeySetting(value);
-                case "resetScore":
-                    return value.equals("true") || value.equals("false");
-                case "colorBlind":
-                    return value.equals("Normal") || value.equals("Protanopia") || value.equals("Deuteranopia") || value.equals("Tritanopia");
-                default:
-                    return false;
             }
         }
 
@@ -260,49 +248,23 @@ public class Maincontainer extends JFrame{
             return true;
         }
 
-        protected void setWindowSize(String str) {
-            settingMap.put("windowSize", str);
-        }
-
-        protected Integer[] getWindowSize() {
-            String[] parts = settingMap.get("windowSize").split("X");
-            Integer[] h_w = new Integer[2];
-            h_w[0] = Integer.parseInt(parts[0]);
-            h_w[1] = Integer.parseInt(parts[1]);
-            return h_w;
-        }
-
-        protected void setKeySetting(String str) {
-            settingMap.put("keySetting", str);
-        }
-
-        protected Integer[] getKeySetting() {
-            String[] parts = settingMap.get("keySetting").split(",");
-            Integer[] keys = new Integer[6];
-            for (int i = 0; i < 6; i++) keys[i] = Integer.parseInt(parts[i].split("=")[1]);
-            return keys;
-        }
-
-        protected void setColorBlind(String str) {
-            settingMap.put("colorBlind", str);
-        }
-
-        protected String getColorBlind() {
-            return settingMap.get("colorBlind");
-        }
-
         protected void clearSetting() {
-            settingMap.put("windowSize", DEFAULT_WINDOW_SIZE);
-            settingMap.put("keySetting", DEFAULT_KEY_SETTING);
-            settingMap.put("resetScore", "false");
-            settingMap.put("colorBlind","Normal");
+            for (Map.Entry<String, ArrayList<String>> entry : validSettingMap.entrySet()) {
+                String name = entry.getKey();
+                SettingComponent settingComponent = new SettingComponent(entry.getValue());
+                currentSettingMap.put(name, settingComponent);
+            }
+        }
+
+        protected static String[] getSettingList() {
+            return validSettingMap.keySet().toArray(new String[0]);
         }
 
         protected void exportSetting() {
             Path path = Paths.get("setting.txt");
             StringBuffer sb = new StringBuffer();
-            for (String line : settingList) {
-                String str = line + ":" + settingMap.get(line) + "\n";
+            for (String line : getSettingList()) {
+                String str = line + ":" + currentSettingMap.get(line).getCurrentSetting() + "\n";
                 sb.append(str);
             }    
             try {
@@ -311,6 +273,38 @@ public class Maincontainer extends JFrame{
             } catch (IOException e) {
                 e.printStackTrace();
             }        
+        }
+
+        protected class SettingComponent {
+            
+            private int numberOfList;
+            private int currentIndex = 0;
+            private ArrayList<String> list;
+
+            protected SettingComponent(ArrayList<String> list) {
+                this.list = list;
+                numberOfList = list.size();
+            }
+
+            protected String getCurrentSetting() {
+                return list.get(currentIndex);
+            }
+
+            protected void modifySetting(String str) {
+                list.set(currentIndex, str);
+            }
+
+            protected void findApplySetting(String str) {
+                if (numberOfList == 1) return; // 단일 항목의 경우, 찾는 것이 아닌 modifySetting()을 사용
+                for (int i = 0; i < numberOfList; i++) { // valid한 값이 아니면 변경될 수 없음
+                    if (list.get(i).equals(str)) currentIndex = i;
+                }
+            }
+
+            protected void changeSetting() {
+                if (currentIndex >= numberOfList - 1) currentIndex = 0;
+                else currentIndex++;
+            }
         }
     }
 }

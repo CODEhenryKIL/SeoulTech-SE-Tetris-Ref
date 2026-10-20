@@ -13,10 +13,21 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.stream.Collectors;
 
 public class Settingpanel extends JPanel{
+    /*
+    버튼 추가 시 지침
+    1. OptionButton 객체 생성
+    - OptionButton(Option 이름, Option 내용(없을 시 null 전달))
+    2. proteced void isPressed() 오버라이딩 하기
+    - 버튼이 눌렸을 때 발생되는 이벤트 함수를 구현하기.
+    3. 스태틱 함수 OptionButton.addButton(JPanel parent, OptionButton child)으로 버튼 등록하기
+    - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (최대 10개 등록 가능)
 
+    기존의 등록 방식을 변경하여 위의 흐름대로만 설정하면 작동할 수 있도록 변경하였습니다.
+    기본적으로 OptionButton은 JPanel을 상속하므로, JPanel이 가지는 메소드도 전부 사용 가능합니다.
+    같은 방식으로 키 추가 리스트도 추가할 수 있습니다.
+     */
     private Maincontainer maincontainer;
     private JPanel settingPanel;
     private OptionButton exitButton;
@@ -26,30 +37,17 @@ public class Settingpanel extends JPanel{
     private OptionButton colorBlindOption;
     private OptionButton resetSettingOption;
     private PlayerKeyListener playerKeyListener;
-    private Integer[] h_w;
     private int HEIGHT;
     private int WIDTH;
 
-    /*
-    버튼 추가 시 지침
-    1. OptionButton 객체 생성
-    - OptionButton(Option 이름, Option 내용(없을 시 null 전달))
-    2. proteced void isPressed() 오버라이딩 하기
-    - 버튼이 눌렸을 때 발생되는 이벤트 함수를 구현하기.
-    3. 스태틱 함수 OptionButton.addButton(JPanel parent, OptionButton child, int index)으로 버튼 등록하기
-    - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (최대 10개 등록 가능)
-
-    기존의 등록 방식을 변경하여 위의 흐름대로만 설정하면 작동할 수 있도록 변경하였습니다.
-    기본적으로 OptionButton은 JPanel을 상속하므로, JPanel이 가지는 메소드도 전부 사용 가능합니다.
-    같은 방식으로 키 추가 리스트도 추가할 수 있습니다.
-     */
     public Settingpanel(Maincontainer maincontainer) {
         this.maincontainer = maincontainer;
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
 
-        h_w = maincontainer.setting.getWindowSize();
-        HEIGHT = h_w[0]; WIDTH = h_w[1];
+        HEIGHT = maincontainer.getHeight();
+        WIDTH = maincontainer.getWidth();
+
         int panelWidth = 0; int panelHeight = 0;
 
         settingPanel = new JPanel();
@@ -62,24 +60,11 @@ public class Settingpanel extends JPanel{
 
             OptionButton.resetStaticField();
             // 테트리스 게임 화면의 크기를 조절 - 최소 3가지 이상 미리 정의된 크기.
-            String str = Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"));
-            windowSizeOption = new OptionButton("Window Option: ", str) {
+            windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting()) {
                 @Override
                 protected void isPressed() {
-                    switch (Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X"))) {
-                        case "600X500":
-                            option.setText("750X625");
-                            maincontainer.setting.setWindowSize("750X625");;
-                            break;
-                        case "750X625":
-                            option.setText("900X750");
-                            maincontainer.setting.setWindowSize("900X750");
-                            break;
-                        case "900X750":
-                            option.setText("600X500");
-                            maincontainer.setting.setWindowSize("600X500");
-                            break;
-                    }
+                    maincontainer.setting.currentSettingMap.get("windowSize").changeSetting();
+                    option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
                 }
             };
             OptionButton.addButton(settingPanel, windowSizeOption);
@@ -113,28 +98,11 @@ public class Settingpanel extends JPanel{
             };
             OptionButton.addButton(settingPanel, resetScoreOption);
             // 색맹 모드 켜고 끄기.
-            str = maincontainer.setting.getColorBlind();
-            colorBlindOption = new OptionButton("Color Option: ", str) {
+            colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting()) {
                 @Override 
                 protected void isPressed() {
-                    switch (maincontainer.setting.getColorBlind()) {
-                        case "Normal":
-                            option.setText("Protanopia");
-                            maincontainer.setting.setColorBlind("Protanopia");;
-                            break;
-                        case "Protanopia":
-                            option.setText("Deuteranopia");
-                            maincontainer.setting.setColorBlind("Deuteranopia");
-                            break;
-                        case "Deuteranopia":
-                            option.setText("Tritanopia");
-                            maincontainer.setting.setColorBlind("Tritanopia");
-                            break;
-                        case "Tritanopia":
-                            option.setText("Normal");
-                            maincontainer.setting.setColorBlind("Normal");
-                            break;
-                    }
+                    maincontainer.setting.currentSettingMap.get("colorBlind").changeSetting();
+                    option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
                 }
             };
             OptionButton.addButton(settingPanel, colorBlindOption);
@@ -143,8 +111,8 @@ public class Settingpanel extends JPanel{
                 @Override 
                 protected void isPressed() {
                     maincontainer.setting.clearSetting();
-                    windowSizeOption.option.setText(Arrays.stream(maincontainer.setting.getWindowSize()).map(String::valueOf).collect(Collectors.joining("X")));
-                    colorBlindOption.option.setText(maincontainer.setting.getColorBlind());
+                    windowSizeOption.option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
+                    colorBlindOption.option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
                     Settingpanel.this.revalidate();
                     Settingpanel.this.repaint();
                 }
@@ -202,14 +170,16 @@ public class Settingpanel extends JPanel{
         this.repaint();
         return;
     }
+
     private void selectDown() {
         OptionButton.getSelectedButton().setOpaque(false);
-        OptionButton.addCurrnetSelected();
+        OptionButton.addCurrentSelected();
         OptionButton.getSelectedButton().setOpaque(true);
         this.revalidate();
         this.repaint();
         return;
     }
+
     private void selectEnter() {
         OptionButton.getSelectedButton().isPressed();
     }
@@ -234,7 +204,9 @@ public class Settingpanel extends JPanel{
             add(keyList);
             keyList.setBounds(10, 10, settingPanel.getWidth(), settingPanel.getHeight());
             keyList.setLayout(new GridBagLayout());
-            currentKey = maincontainer.setting.getKeySetting();
+            String[] parts = maincontainer.setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
+            Integer[] currentKey = new Integer[6];
+            for (int i = 0; i < 6; i++) currentKey[i] = Integer.parseInt(parts[i].split("=")[1]);
             ChangeKeyButton.resetStaticField();
 
             rotateOption = new ChangeKeyButton("Rotate: ", KeyEvent.getKeyText(currentKey[0])) {
@@ -294,8 +266,8 @@ public class Settingpanel extends JPanel{
                                 + ",RIGHT=" + currentKey[3] 
                                 + ",PAUSE=" + currentKey[4] 
                                 + ",HARD_DROP=" + currentKey[5];
-                    Settingpanel.this.maincontainer.setting.setKeySetting(str);
-                    removeKeyListener(keylistener2);
+                    Settingpanel.this.maincontainer.setting.currentSettingMap.get("keySetting").modifySetting(str);
+                    Settingpanel.this.removeKeyListener(keylistener2);
                     Settingpanel.this.addKeyListener(Settingpanel.this.playerKeyListener);
                     Settingpanel.this.remove(ChangeKeyPanel.this);
                     Settingpanel.this.revalidate();
@@ -337,7 +309,7 @@ public class Settingpanel extends JPanel{
 
         private void selectDown() {
             ChangeKeyButton.getSelectedButton().setOpaque(false);
-            ChangeKeyButton.addCurrnetSelected();
+            ChangeKeyButton.addCurrentSelected();
             ChangeKeyButton.getSelectedButton().setOpaque(true);
             revalidate();
             repaint();
@@ -446,7 +418,7 @@ public class Settingpanel extends JPanel{
                 buttonList.add(child);
             }
 
-            protected static void addCurrnetSelected() {
+            protected static void addCurrentSelected() {
                 if (currentSelected >= numberOfOptions - 1) {
                     currentSelected = 0;
                 } else currentSelected++;
@@ -512,7 +484,7 @@ public class Settingpanel extends JPanel{
             buttonList.add(child);
         }
 
-        protected static void addCurrnetSelected() {
+        protected static void addCurrentSelected() {
             if (currentSelected >= numberOfOptions - 1) {
                 currentSelected = 0;
             } else currentSelected++;
