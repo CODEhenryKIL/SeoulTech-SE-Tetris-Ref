@@ -39,9 +39,9 @@ public class Startpanel extends JPanel{
 
         // Button 컴포넌트 만들기
         JPanel buttonPanel = new JPanel();
-        buttonPanel.setLayout(new GridBagLayout()); // 3행 1열, 버튼 사이 간격 15px
+        buttonPanel.setLayout(new GridBagLayout());
         buttonPanel.setOpaque(false); // 투명 배경
-        buttonPanel.setPreferredSize(new Dimension(100, 150)); // 컴포넌트 사이즈 지정
+        buttonPanel.setPreferredSize(new Dimension(200, 250)); // 컴포넌트 사이즈 지정
 
         // Button 4개 추가하기
         Button startButton = new Button("START") {
@@ -76,6 +76,7 @@ public class Startpanel extends JPanel{
         // Button 컴포넌트 위치를 위한 제약사항
         gbc.gridy = 1; // grid[0][1]에 위치
         gbc.weighty = 0.7; // 수직 화면의 70% 차지하게 조정
+        gbc.insets = new Insets(10, 10, 10, 10);
 
         add(buttonPanel, gbc); // 버튼들은 중앙에
 
@@ -129,12 +130,14 @@ public class Startpanel extends JPanel{
         protected JLabel text;
 
         public Button(String buttonName) {
+            setLayout(new GridBagLayout());
             setBackground(changeColor(Color.GRAY));
             setOpaque(false);
 
             text = new JLabel(buttonName, SwingConstants.CENTER);
             text.setFont(new Font("Courier", Font.BOLD, 16));
             text.setForeground(changeColor(Color.BLACK));
+            text.setHorizontalAlignment(JLabel.CENTER);
             add(text);
 
             Dimension labelSize = text.getPreferredSize();

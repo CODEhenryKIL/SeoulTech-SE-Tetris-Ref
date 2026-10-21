@@ -1,6 +1,6 @@
-difficulty:Normal
 windowSize:600X500
-resetScore:false
-keySetting:ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32
+difficulty:Easy
 colorBlind:Normal
+keySetting:ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32
+resetScore:false
 

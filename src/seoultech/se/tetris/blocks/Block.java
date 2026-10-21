@@ -2,7 +2,7 @@ package seoultech.se.tetris.blocks;
 
 import java.awt.Color;
 
-public abstract class Block {
+public abstract class Block implements Cloneable {
 		
 	protected int[][] shape;
 	protected Color color;
@@ -34,5 +34,10 @@ public abstract class Block {
 		if(shape.length > 0)
 			return shape[0].length;
 		return 0;
+	}
+
+	@Override 
+	public Block clone() throws CloneNotSupportedException {
+		return (Block) super.clone();
 	}
 }

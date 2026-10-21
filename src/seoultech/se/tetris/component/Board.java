@@ -7,11 +7,14 @@ import java.awt.Insets;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.SecondaryLoop;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +32,7 @@ import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
 	private static final long serialVersionUID = 2434035659171694595L;
+	private SecondaryLoop currentLoop;
 	
 	protected static final int HEIGHT = 20;
 	protected static final int WIDTH = 10;
@@ -121,7 +125,11 @@ public class Board extends JComponent {
 		// 룰렛 시스템을 위한 switch-case가 아닌 if-else문 사용
 		for (int i = 0; i < rouletteList.size(); i++) {
 			int num = rouletteList.get(i);
-			if (num >= block) return blockList.get(i);
+			if (num >= block) {
+				try {
+					return blockList.get(i).clone();
+				} catch (Exception e) {e.printStackTrace();}
+			} 
 			else {block -= num;}
 		}
 		return null;
@@ -264,6 +272,11 @@ public class Board extends JComponent {
 		for (int i = 0; i < HEIGHT; i++) {
 			int[] line = board[i];
 			if (!Arrays.stream(line).anyMatch(t -> t == 0)) {
+				// TODO
+				eraseAnimation(i);
+				SecondaryLoop loop = Toolkit.getDefaultToolkit().getSystemEventQueue().createSecondaryLoop();
+				this.currentLoop = loop;
+				loop.enter();
 				for (int j = i - 1; j >= 0; j--) {
 					tmp = board[j];
 					tmp_t = new ArrayList<>(textChunks.subList((j+1)*(WIDTH+3), (j+2)*(WIDTH+3)));
@@ -279,6 +292,39 @@ public class Board extends JComponent {
 			}
 		}
 	}
+
+	protected void eraseAnimation(int lineIndex) {
+		timer.stop();
+		int[] start = {(lineIndex+1)*(WIDTH+3)+1};
+		int[] end = {(lineIndex+2)*(WIDTH+3)-2};
+		int[] middle = {start[0] + ((end[0] - start[0]) / 2)};
+		int[] cnt = {0};
+		Collections.fill(textChunks.subList(start[0], end[0]), new TextChunk("O", Color.WHITE));
+		Timer animationTimer = new Timer(50, new ActionListener() {
+			@Override 
+			public void actionPerformed(ActionEvent e) {
+				System.out.println("start: " + start[0] + " end: " + end[0] + " middle: " + middle[0] + " " + cnt[0]);
+				if (cnt[0] >= 4) {
+					Timer t = (Timer) e.getSource();
+					timer.start();
+					t.stop();
+					if (currentLoop != null) {
+						currentLoop.exit();
+					}
+					return;
+				}
+				System.out.println("START: " + middle[0] + " END: " + (start[0]+end[0]-middle[0]));
+				Collections.fill(textChunks.subList(middle[0], start[0]+end[0]-middle[0]), new TextChunk(" ", Color.WHITE));
+				revalidate();
+				repaint();
+				middle[0]--;
+				cnt[0]++;
+			}
+		});
+		animationTimer.start();
+	}
+	//0  1 2 3 4 5 6 7 8 9 10  11
+	// 
 
 	private void levelUp() {
 		if (level < 19) level++;
