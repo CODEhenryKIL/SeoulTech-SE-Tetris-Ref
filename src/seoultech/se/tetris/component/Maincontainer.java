@@ -131,8 +131,9 @@ public class Maincontainer extends JFrame{
         setVisible(true);
     }
 
-    public int getWidth() {return WIDTH;}
-    public int getHeight() {return HEIGHT;}
+    // 게임 설정 크기는 제목 표시줄·테두리를 포함한 JFrame의 실제 크기와 구분한다.
+    public int getConfiguredWidth() {return WIDTH;}
+    public int getConfiguredHeight() {return HEIGHT;}
 
     public static Color changeColor(Color exColor) {
         Color newColor = exColor;

@@ -47,13 +47,15 @@
 
 **새 검증 근거**: 아래 7절의 2026-10-22 컴파일·테스트 로그. 오류에 직접 해당하는 설정 검사 4개와 나머지 게임 회귀 검사 12개가 모두 통과했다.
 
-### 2.2 PR10-04: 화면 크기 변경 후 하단 흰 여백 — 다음 오류 검토 항목
+### 2.2 PR10-04: 화면 크기 변경 후 하단 흰 여백 — 로컬 수정·검증 완료 (2026-10-22)
 
-- **확인 사실**: `exitSettingEnterStart()`는 Startpanel을 먼저 만든 뒤 설정을 적용한다. Startpanel은 생성 시점의 크기와 색상을 사용한다. root 패널을 분리한 뒤 같은 객체를 다시 붙이고, 카드 추가 전에 `pack()`을 호출한다. 근거: [Maincontainer.java:84](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:84>), [Maincontainer.java:116](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:116>), [Startpanel.java:19](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Startpanel.java:19>).
-- **추론 / 확신 중간**: 이 순서가 저장 직후 잘못된 크기·색상 또는 다시 그리기 시점 차이에 영향을 줄 가능성이 있다. PR 작성자의 흰 여백 보고와 맞지만, 실제 원인이 이 순서 하나로 확정된 것은 아니다.
-- **제안**: 향후 재현 후 설정 적용, 새 화면 생성, 카드 표시, 레이아웃, 포커스의 책임과 순서를 함께 검토한다. 흰 여백 수정과 대규모 화면 재사용 설계를 한 변경에 묶지 않는다.
-- **확인 기준**: 세 크기를 확대·축소 방향으로 전환하고, 색각 모드 변경·초기화 후 시작 화면에 복귀한다. 선택 키를 눌러 화면을 다시 그리기 **전**의 결과와 첫 키 입력도 확인한다.
-- **미확인**: 이번 분석에서는 실제 창을 실행하지 않았다. 기존 헤드리스 테스트도 크기·포커스·페인트를 검증하지 않는다.
+- **수정 계획·범위**: 실제 컴포넌트 크기와 설정 크기가 달라도 `getWidth()/getHeight()`가 실제 크기를 반환하는 검사를 먼저 추가한 뒤, 설정 크기 조회 메서드와 네 화면의 호출부만 변경한다. 화면 복귀 순서 변경은 포함하지 않는다.
+- **확인된 원인**: Maincontainer가 JFrame의 `getWidth()/getHeight()`를 설정 크기로 재정의했다. 실제 GUI에서 프레임 높이 628, 반환 높이 600, 제목 표시줄 높이 28이 관찰됐다. Swing이 부모 크기로 다시 그릴 범위를 제한하면서 하단 영역이 누락될 수 있는 잘못된 크기 계약이다. 실제 확대 후 흰 띠도 28(2배율 캡처에서 56픽셀)로 일치했다.
+- **비교 검증**: 같은 메뉴 처리 코드를 호출한 임시 GUI에서 원본과 화면 복귀 순서만 변경한 버전은 흰 띠가 발생했다. 크기 메서드만 변경한 버전과 두 수정을 적용한 버전은 발생하지 않았다. 크기 수정본은 최대 크기 확대와 최소 크기 축소에서도 재발하지 않았다. 따라서 기존의 복귀 순서 원인 추정은 이번 흰 띠의 직접 원인으로 채택하지 않는다.
+- **적용한 수정**: 설정 크기는 `getConfiguredWidth()/getConfiguredHeight()`로 조회하고, JFrame의 실제 크기 조회는 상속된 메서드를 사용한다. 시작·게임·설정·점수판은 계속 동일한 설정 크기를 사용한다. 근거: [Maincontainer.java:134](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:134>), [Startpanel.java:20](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Startpanel.java:20>), [Gamepanel.java:46](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Gamepanel.java:46>), [Settingpanel.java:48](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:48>), [Scoreboardpanel.java:36](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Scoreboardpanel.java:36>).
+- **자동 검증**: 신규 `frame-size` 검사는 수정 전 실패, 수정 후 통과했다. 세 가지 설정 크기에서 실제 AWT 크기와 게임 화면의 설정 크기가 독립적인지 확인한다. 전체 회귀 검사 **17/17 통과**, Java 21 컴파일 및 `git diff --check` 통과. 컴파일의 serial/Unsafe 관련 경고는 남아 있다.
+- **검증 한계·보류**: GUI 비교는 macOS/Java 21에서 진단 메뉴로 기존 키 처리 코드를 호출했다. 물리 키 입력·포커스와 Windows는 이 자동 비교의 검증 범위 밖이다. Startpanel을 새 설정 적용 전에 만드는 기존 복귀 순서와 색상 적용 시점은 별도 논의 대상으로 남긴다.
+- **근거 보관**: 저장소 밖 `artifacts/pr10-review/white-gap-20261022/`에 GUI 캡처·크기 로그·비교 diff·픽셀 측정 결과, `artifacts/pr10-review/white-gap-fix-20261022/`에 수정 전 실패·수정 후 컴파일·전체 회귀 검사 로그를 저장했다. 로컬 수정이며 원격 push는 하지 않았다.
 
 ## 3. 전체 코드 구조에서 확인한 책임과 연결
 

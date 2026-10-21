@@ -33,8 +33,8 @@ public class Scoreboardpanel extends JPanel{
         setBorder(BorderFactory.createEmptyBorder(20,20,20,20));
         this.maincontainer = maincontainer;
 
-        HEIGHT = maincontainer.getHeight();
-        WIDTH = maincontainer.getWidth();
+        HEIGHT = maincontainer.getConfiguredHeight();
+        WIDTH = maincontainer.getConfiguredWidth();
 
         scorepanel = new JTextPane();
         scorepanel.setEditable(false);

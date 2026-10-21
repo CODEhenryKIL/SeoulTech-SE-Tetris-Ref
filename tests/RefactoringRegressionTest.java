@@ -53,6 +53,7 @@ public final class RefactoringRegressionTest {
     private record Check(String id, String description, CheckedRunnable action) {}
 
     private static final List<Check> CHECKS = List.of(
+        new Check("frame-size", "실제 창 크기와 게임 설정 크기의 독립성", RefactoringRegressionTest::frameSize),
         new Check("key-change", "중복 키 거부 → 키 변경 → 저장·재로드", RefactoringRegressionTest::keyChange),
         new Check("reset-settings", "사용자 설정을 기본값으로 복원·저장", RefactoringRegressionTest::resetSettings),
         new Check("unknown-setting", "모르는 설정을 무시하고 정상 설정 유지", RefactoringRegressionTest::unknownSetting),
@@ -140,6 +141,27 @@ public final class RefactoringRegressionTest {
         }
         System.out.printf("RESULT %d/%d passed%n", CHECKS.size() - failures, CHECKS.size());
         return failures == 0 ? 0 : 1;
+    }
+
+    private static void frameSize() throws Exception {
+        Maincontainer owner = owner("");
+        Field field = Unsafe.class.getDeclaredField("theUnsafe");
+        field.setAccessible(true);
+        Unsafe unsafe = (Unsafe) field.get(null);
+        long widthOffset = unsafe.objectFieldOffset(java.awt.Component.class.getDeclaredField("width"));
+        long heightOffset = unsafe.objectFieldOffset(java.awt.Component.class.getDeclaredField("height"));
+        // 실제 창 없이 AWT의 실제 크기 필드에 테두리·제목 표시줄을 포함한 값을 준비한다.
+        // 픽셀 도색은 별도의 실제 GUI 검증 대상이다.
+        for (int[] size : new int[][] {{500, 600}, {625, 750}, {750, 900}}) {
+            set(owner, "WIDTH", size[0]);
+            set(owner, "HEIGHT", size[1]);
+            unsafe.putInt(owner, widthOffset, size[0] + 8);
+            unsafe.putInt(owner, heightOffset, size[1] + 28);
+            require(owner.getWidth() == size[0] + 8, "창 너비는 설정값이 아닌 AWT의 실제 크기여야 합니다.");
+            require(owner.getHeight() == size[1] + 28, "창 높이는 제목 표시줄을 포함한 실제 크기여야 합니다.");
+            require(new Startpanel(owner).getPreferredSize().equals(new java.awt.Dimension(size[0], size[1])),
+                "게임 화면의 설정 크기에 창 테두리·제목 표시줄 크기가 섞이면 안 됩니다.");
+        }
     }
 
     private static void keyChange() throws Exception {

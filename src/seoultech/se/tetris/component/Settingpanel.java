@@ -45,8 +45,8 @@ public class Settingpanel extends JPanel{
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
 
-        HEIGHT = maincontainer.getHeight();
-        WIDTH = maincontainer.getWidth();
+        HEIGHT = maincontainer.getConfiguredHeight();
+        WIDTH = maincontainer.getConfiguredWidth();
 
         int panelWidth = 0; int panelHeight = 0;
 
