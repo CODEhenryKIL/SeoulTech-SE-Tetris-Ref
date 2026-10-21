@@ -31,6 +31,7 @@ public class Settingpanel extends JPanel{
     private OptionButton keySettingOption;
     private OptionButton resetScoreOption;
     private OptionButton colorBlindOption;
+    private OptionButton difficultyOption;
     private OptionButton resetSettingOption;
     private PlayerKeyListener playerKeyListener;
     private int HEIGHT;
@@ -98,6 +99,7 @@ public class Settingpanel extends JPanel{
                     maincontainer.setting.clearSetting();
                     windowSizeOption.option.setText(maincontainer.setting.getWindowSize());
                     colorBlindOption.option.setText(maincontainer.setting.getColorPalette());
+                    difficultyOption.option.setText(maincontainer.setting.currentSettingMap.get("difficulty").getCurrentSetting());
                     Settingpanel.this.revalidate();
                     Settingpanel.this.repaint();
                 }

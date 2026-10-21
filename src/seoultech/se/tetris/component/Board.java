@@ -12,6 +12,10 @@ import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Random;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
 
 import javax.swing.BorderFactory;
@@ -42,6 +46,13 @@ public class Board extends JComponent {
 	private Block next;
 	private int erasedLineNum = 0;
 	private int level = 1;
+	// IBlock, JBlock, LBlock, ZBlock, SBlock, TBlock, OBlock
+	private ArrayList<Block> blockList = new ArrayList<>(List.of(new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock()));
+	private static final LinkedHashMap<String, ArrayList<Integer>> rouletteWheelSelection = new LinkedHashMap<>(Map.of(
+		"Easy", 	new ArrayList<>(List.of(12, 10, 10, 10, 10, 10, 10)),
+		"Normal", 	new ArrayList<>(List.of(10, 10, 10, 10, 10, 10, 10)),
+		"Hard", 	new ArrayList<>(List.of(8, 10, 10, 10, 10, 10, 10))
+	));
 	int x = 3; //Default Position.
 	int y = 0;
 	
@@ -102,6 +113,20 @@ public class Board extends JComponent {
 		}
 	}
 
+	private Block getRandomBlock() {
+		ArrayList<Integer> rouletteList = rouletteWheelSelection.get(gamepanel.difficulty);
+		int sum = 0;
+		for (int i:rouletteList) sum+=i;
+		int block = random.nextInt(sum); block++;
+		// 룰렛 시스템을 위한 switch-case가 아닌 if-else문 사용
+		for (int i = 0; i < rouletteList.size(); i++) {
+			int num = rouletteList.get(i);
+			if (num >= block) return blockList.get(i);
+			else {block -= num;}
+		}
+		return null;
+	}
+	
 	private void placeBlock() {
 		int dy = y; int dx = x;
 		while(canDown(dx, dy)) dy++;

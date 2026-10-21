@@ -4,6 +4,12 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
+import java.util.Arrays;
+
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -17,6 +23,7 @@ import seoultech.se.tetris.score.ScoreStore;
 
 public class Gamepanel extends JPanel{
     private Board board;
+    protected String difficulty;
     private Nextblockpanel nextblockpanel;
     private JTextPane scorepanel;
     private StyledDocument docScore;
@@ -38,6 +45,7 @@ public class Gamepanel extends JPanel{
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
+        difficulty = maincontainer.setting.currentSettingMap.get("difficulty").getCurrentSetting();
 
         board = new Board(this);
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);
