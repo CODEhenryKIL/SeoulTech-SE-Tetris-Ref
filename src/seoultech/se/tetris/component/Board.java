@@ -303,7 +303,6 @@ public class Board extends JComponent {
 		Timer animationTimer = new Timer(50, new ActionListener() {
 			@Override 
 			public void actionPerformed(ActionEvent e) {
-				System.out.println("start: " + start[0] + " end: " + end[0] + " middle: " + middle[0] + " " + cnt[0]);
 				if (cnt[0] >= 4) {
 					Timer t = (Timer) e.getSource();
 					timer.start();
@@ -313,18 +312,14 @@ public class Board extends JComponent {
 					}
 					return;
 				}
-				System.out.println("START: " + middle[0] + " END: " + (start[0]+end[0]-middle[0]));
 				Collections.fill(textChunks.subList(middle[0], start[0]+end[0]-middle[0]), new TextChunk(" ", Color.WHITE));
-				revalidate();
-				repaint();
+				drawBoard();
 				middle[0]--;
 				cnt[0]++;
 			}
 		});
 		animationTimer.start();
 	}
-	//0  1 2 3 4 5 6 7 8 9 10  11
-	// 
 
 	private void levelUp() {
 		if (level < 19) level++;
