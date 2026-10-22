@@ -55,7 +55,6 @@ public class Board extends JComponent {
 				BorderFactory.createLineBorder(changeColor(Color.DARK_GRAY), 5));
 		setBorder(border);
 		
-		//Document default style.
 		this.gamepanel = gamepanel;
 		//Set timer for block drops.
 		timer = new Timer(initInterval, new ActionListener() {			
@@ -74,7 +73,7 @@ public class Board extends JComponent {
 	protected void boardStart() {
 		curr = blockGenerator.nextBlock();
 		next = blockGenerator.nextBlock();
-		this.gamepanel.drawNextBoard();
+		this.gamepanel.drawNextBoard(next);
 		StringBuffer sb = new StringBuffer();
 		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR); // 윗쪽 보더
 		sb.append("\n");
@@ -194,7 +193,7 @@ public class Board extends JComponent {
 		if (isgameover()) return false;
 		curr = next;
 		next = blockGenerator.nextBlock();
-		this.gamepanel.drawNextBoard();
+		this.gamepanel.drawNextBoard(next);
 
 		x = 3;
 		y = 0;

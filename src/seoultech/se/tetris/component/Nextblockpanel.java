@@ -16,13 +16,13 @@ import javax.swing.BorderFactory;
 import javax.swing.JComponent;
 import javax.swing.border.CompoundBorder;
 
+import seoultech.se.tetris.blocks.Block;
+
 public class Nextblockpanel extends JComponent{
 
-    private Gamepanel gamepanel;
     private ArrayList<TextChunk> textChunks;
 
-    public Nextblockpanel(Gamepanel gamepanel) {
-        this.gamepanel = gamepanel;
+    public Nextblockpanel() {
         this.textChunks = new ArrayList<>();
         setBackground(changeColor(Color.BLACK));
         CompoundBorder border = BorderFactory.createCompoundBorder(
@@ -93,32 +93,32 @@ public class Nextblockpanel extends JComponent{
 		}
 	}
 
-    private void setText(String text) {
+    private void setText(String text, Color color) {
 		if (text == null || text.isEmpty()) {
 			this.textChunks = new ArrayList<>();
 		} else {
             textChunks = new ArrayList<>();
 			for (String str : text.split("")) {
-				textChunks.add(new TextChunk(str, gamepanel.getNextBlock().getColor()));
+				textChunks.add(new TextChunk(str, color));
 			}
 		}
 		repaint();
 	}
 
-    protected void drawNextBoard() {
+    protected void drawNextBoard(Block next) {
         StringBuffer sb = new StringBuffer();
         for (int i = 0; i < 6; i++) sb.append(" ");
         sb.append("\n");
         for (int i = 0; i < 6; i++) sb.append(" ");
         sb.append("\n");
-        for (int i = 0; i < gamepanel.getNextBlock().height(); i++) {
+        for (int i = 0; i < next.height(); i++) {
             sb.append(" ");
-            for (int j = 0; j < gamepanel.getNextBlock().width(); j++) {
-                if (gamepanel.getNextBlock().getShape(j, i) == 0) sb.append(" ");
+            for (int j = 0; j < next.width(); j++) {
+                if (next.getShape(j, i) == 0) sb.append(" ");
                 else sb.append("O");
             }
             sb.append("\n");
         }
-        setText(sb.toString());
+        setText(sb.toString(), next.getColor());
     }
 }

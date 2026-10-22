@@ -2,7 +2,7 @@
 
 작성일: 2026-10-22
 
-상태: PR10 오류·REF-01~06·REF-07 1차·REF-08 로컬 구현·검증 완료(macOS) / REF-07 후속·REF-09 이후 논의 대기
+상태: PR10 오류·REF-01~06·REF-07 1차·REF-08~10 로컬 구현·검증 완료(macOS) / REF-07 후속·정책 논의 대기
 
 이 문서를 앞으로 리팩토링 논의를 이어갈 기준으로 사용한다. 기존 [tetris-improvements.md:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/tetris-improvements.md:1>)와 10월 20일 계획 초안은 참고 자료로 두고 원문을 변경하지 않는다. 목표는 **중복 코드 삭제와 가독성 개선을 우선하고, 1차 기능을 유지하면서 2차 요구사항에 필요한 경계를 정리하는 것**이다.
 
@@ -121,8 +121,8 @@ PR10 오류 처리 후 아래 순서로 하나씩 상의하는 안이다. 번호
 | 6 | REF-06 | 블록 생성 책임 분리 | 중간; 2차 난이도·아이템의 확장 지점 | 구현·검증 완료(macOS), 로컬 커밋 |
 | 7 | REF-07 | 게임 규칙과 Swing 표시·시간 처리 경계 분리 | 큼; 필요한 규칙부터 좁게 분리 | 1차 충돌·회전 판정 분리 완료(macOS), 후속 논의 |
 | 8 | REF-08 | 점수 파일 읽기·쓰기·초기화 규칙 한곳에서 관리 | 중간; 기존 기록 형식 유지 | 구현·검증 완료(macOS), 로컬 커밋 |
-| 9 | REF-09 | 미리보기의 간접 의존과 렌더링 중복 검토 | 중간~큼; 큰 공통 렌더러는 후순위 | 논의 대기 |
-| 10 | REF-10 | 수정 영역의 잘못된 주석·미사용 데이터·이름 정리 | 작음; 일괄 이름 변경은 제외 | 논의 대기 |
+| 9 | REF-09 | 미리보기에 다음 블록 직접 전달 | 좁은 연결 정리; 공통 렌더러 보류 | 구현·검증 완료(macOS), 로컬 커밋 |
+| 10 | REF-10 | 수정 영역의 잘못된 주석·미사용 데이터·이름 정리 | 작음; 일괄 이름 변경은 제외 | 구현·검증 완료(macOS), 로컬 커밋 |
 
 ### REF-01. 중복 표시·화면 복귀
 
@@ -362,15 +362,49 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 - **확인 사실 / 확신 높음**: Nextblockpanel은 Gamepanel을 통해 Board.next를 조회하고, Board와 별도의 TextChunk·폰트 배율 렌더링을 갖는다. [Nextblockpanel.java:35](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:35>), [Nextblockpanel.java:96](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:96>), [Board.java:358](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Board.java:358>).
 - **제안**: 우선 미리보기에 필요한 블록/표시 값을 직접 넘기는 좁은 경계가 유익한지 본다. 비슷해 보이는 렌더링 전체를 바로 하나로 합치는 것은 후순위로 둔다.
-- **위험·검증**: 다음 블록의 모양·색·크기·갱신 시점, 화면 배율별 잘림, 아이템 문자 표시 확장. 현재 테스트는 실제 미리보기 페인트를 확인하지 않는다.
-- **상의할 사항**: 간접 참조를 줄이는 것만 할지, 렌더링 중복을 남겨둘지.
+- **위험·검증**: 다음 블록의 모양·색·크기·갱신 시점과 화면 배율별 잘림을 아래 회귀/전후 페인트 비교로 확인한다. 향후 아이템 문자 표시 확장은 별도 기능 설계 대상이다.
+- **합의**: 간접 참조만 줄이고 기존 미리보기/게임판 렌더링은 유지한다. 사용자의 REF-09 진행 요청에 따라 아래 범위로 구현한다.
+
+#### REF-09 실행 계획 (2026-10-22)
+
+- **합의 범위**: 미리보기의 Gamepanel → Board 역조회만 없앤다. Board가 이미 생성한 next를 Gamepanel을 통해 Nextblockpanel에 전달하며, 페인트·배율·여백·표시 문자·게임 규칙은 유지한다. 공통 렌더러 도입은 보류한다.
+- **대상 파일**: Board.java의 시작/고정 후 갱신 두 곳, Gamepanel.java의 생성/전달 메서드, Nextblockpanel.java의 생성자/표시 데이터 구성, 회귀 테스트와 이 문서만 수정한다. 별도 `refactor/preview-input` 브랜치에서 작업한다.
+- **정리 순서**: 기존 48검사에 7종×4회전의 모양/색·입력 불변, 교체/인스턴스 독립, 이동·일시정지 중 표시 유지 검사를 보강하여 수정 전 통과시킨다. 이후 Gamepanel 필드와 미사용 역조회 메서드를 삭제하고 Block 인수를 전달한다. 마지막에 화면 없는 미리보기 직접 검사를 추가한다.
+- **API 변경**: Nextblockpanel(Gamepanel) → Nextblockpanel(), 두 패널의 drawNextBoard() → drawNextBoard(Block). 저장소 내 호출부를 함께 변경하며 미사용 Gamepanel.getNextBlock()은 삭제한다. Board.getNextBlock()은 유지한다.
+- **fallback 점검**: 이번 연결 경로에 오류를 숨기는 우회/호환 분기는 없다. 기존 setText의 빈 문자열 처리는 이번 범위에서 유지하고 새 호환 래퍼·의존성·추상화를 추가하지 않는다.
+- **검증**: 전체 회귀, 세 크기·네 색상 옵션에서 7종×4회전 미리보기 페인트 전후 비교, 기존 게임 상태 비교, macOS 실제 키 입력으로 시작·이동/회전·일시정지·일반 낙하/하드드롭·게임 오버를 확인한다. 원래 설정/점수 파일 보존과 별도 읽기 전용 검토를 확인한다. Windows 실행은 별도 미검증으로 남긴다.
+
+#### REF-09 구현·검증 결과 (2026-10-22)
+
+- **비포 → 애프터**: Nextblockpanel이 Gamepanel.getNextBlock()을 통해 Board.next의 크기·칸·색을 반복 조회하던 연결을 없앴다. 이제 Board가 시작/고정 후 생성한 next를 기존 시점에 Gamepanel.drawNextBoard(next) → Nextblockpanel.drawNextBoard(next)로 넘긴다. 미리보기는 전달 시 문자/색 청크를 만들고 Gamepanel·Block을 필드로 보유하지 않는다.
+- **파일별 변경**: Board는 두 호출의 인수만 추가했다. Gamepanel은 인수를 전달하고 Nextblockpanel()로 생성하며 미사용 protected getNextBlock()을 제거했다. Nextblockpanel은 Gamepanel 필드/생성자 인수를 제거하고 setText에 색을 전달한다. 기존 Board.getNextBlock()과 paintComponent·글꼴·배율·여백·문자 구성은 유지한다. 생성자/두 drawNextBoard의 API 변경과 제거 메서드의 저장소 내 호출부를 모두 반영했다.
+- **수정 전후 회귀**: 기존 48검사에 7종×4회전 전체 문자/색·입력 불변, 교체/패널 간 독립·전달 후 원본 회전, 시작/이동/회전/정지의 갱신 시점을 보강해 production 수정 전 51/51 통과했다. 분리 후 Gamepanel 없이 미리보기 생성/교체·Block 참조 비보유 검사까지 전체 52/52 통과했다. 기존 정상 낙하·하드드롭·줄 삭제·레벨·게임 오버 승계 검사도 모두 통과했다.
+- **화면 비교**: 동일 Java 21·Metal L&F·EDT에서 미리보기 크기 140/175/210 × 색상 옵션 4종 × 블록 7종 × 회전 4종, 336 PNG와 336 문자/색 기록이 전후 672/672 byte-identical이다. 세 창 크기의 기존 게임 상태 42종도 42 PNG/42 상태 기록, 84/84 동일하다. Nextblockpanel.paintComponent 소스 자체도 동일하다. 실제 새 아이템 기능은 이 결과에 포함되지 않는다.
+- **컴파일·독립 검토**: 작성자와 별도 읽기 전용 검토자가 각각 Java 21 `--release 21 -Xlint:all` 빌드·전체 52/52·diff 검사를 통과했다. 기존 경고 37개, 오류 0개이며 독립 검토 발견 이슈 0건이다. 검토자가 위 두 렌더 산출물 묶음도 직접 비교했다. 전용 LSP/AST·보안 스캐너 도구는 없어 javac/rg 점검으로 대체했으며 형식 판정 COMMENT, 코드 기준 승인 차단 사유 없음이다.
+- **macOS 실제 조작**: 별도 패키징한 production 앱에 OS 키 입력을 보내 시작/정지, 정지 중 이동·회전·드롭 차단, 재개·이동·회전·수동 낙하, 하드드롭 후 이전 next의 curr 승계와 새 미리보기, 일반 낙하/실제 타이머 고정 후 동일 승계, 게임 오버 뒤 미리보기 유지, 숫자 이름 저장·시작 화면 복귀를 확인했다. 수동 관찰 전용 로그의 모든 게임 스냅샷에서 모양/색이 Board.next와 일치했다. 긴 Down 입력 두 번은 포커스 가드로 중단됐고, 백그라운드 게임 종료 후 정지를 기대한 한 번은 검사 가정이 맞지 않았다. 입력 중단 기록을 보존하고 실제 타이머 고정 전후 객체 ID·표시 기록으로 일반 낙하 승계를 확인했다. 앱은 시작 화면에 두었고 원래 설정/점수 파일은 전후 동일하다.
+- **근거·상태**: `artifacts/ref09/`에 실행 계획·전후 컴파일/회귀·이미지/상태 비교·GUI production 소스 해시·실제 입력 로그와 캡처를 보관한다. 별도 `refactor/preview-input` 브랜치에 로컬 커밋하며 기존 PR13 브랜치는 변경하지 않았다. Windows 실행은 미검증이다.
 
 ### REF-10. 주석·미사용 데이터·이름
 
-- **확인 사실 / 확신 높음**: `remove(mainPanel) // GC 발생`이라는 주석이 있지만 같은 필드 객체를 다시 add한다. `resetScore` 설정값은 존재하나 실제 점수 초기화는 파일을 바로 비운다. [Maincontainer.java:87](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:87>), [Maincontainer.java:194](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:194>), [Settingpanel.java:88](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:88>).
-- **제안**: 수정하는 영역의 사실과 다른 주석·중복 세미콜론·불필요한 지역값부터 정리한다. 파일에 저장되는 설정 이름이나 외부에서 쓰는 API는 단순 미사용처럼 보여도 먼저 영향 범위를 확인한다.
-- **위험·검증**: `resetScore` 항목 삭제는 기존 파일/출력 형식 변화가 될 수 있다. 클래스명·패키지명을 일괄 변경하면 기존 테스트 어댑터도 영향을 받으므로 현재 우선순위에서 제외한다.
-- **상의할 사항**: 주석·명백한 중복만 정리하고 정책이 걸린 필드는 보류하는 안.
+- **현재 확인 사실**: 초안의 `GC 발생` 주석은 앞선 작업에서 이미 제거됐다. 현재 남은 대상은 Maincontainer의 CardLayout/색상 설명, Board의 잘못된 스타일 주석, Settingpanel의 미사용 배치 변수와 오타, Tetris import의 중복 세미콜론이다. `resetScore`는 점수 초기화의 제어값으로 사용하지 않지만 설정 파일의 읽기/저장 항목으로 남아 있다. 실제 초기화 버튼은 ScoreStore.clear()를 호출한다.
+- **사용자 합의**: 위 작은 정리와 `h_w` → `windowDimensions`, private `usrname` → `userName`을 진행한다. resetScore 설정/초기화 버튼, Enter 키 정책, 클래스명·패키지명은 유지한다.
+
+#### REF-10 실행 계획 (2026-10-22)
+
+- **파일·범위**: Maincontainer.java의 사실과 다른 주석/지역 변수명, Board.java의 스타일 주석, Settingpanel.java의 사용하지 않는 gbc/불필요한 초기값/끝 return/오타, Gamepanel.java의 private 이름/숫자 설명, Tetris.java의 중복 세미콜론만 정리한다. 테스트는 이름으로 필드를 조회하는 두 곳만 함께 수정한다. 문서는 계획/현재 사실/결과를 갱신한다.
+- **순서**: 기존 회귀의 메뉴 이동·설정 저장/재로드·키 변경·점수 저장/초기화·저장 바이트 검사를 수정 전 실행한다. 미사용 코드 삭제 → 주석/이름 정리 → 전체 52검사·컴파일·독립 검토 → 실제 메뉴/설정 저장/점수 저장 확인 순서로 진행한다. 기존 검사가 대상 동작을 다루므로 동작을 그대로 따라 쓰는 새 테스트는 추가하지 않는다.
+- **fallback 분류**: 이번 삭제 대상에 오류를 숨기는 우회 경로는 없다. resetScore는 저장 형식을 유지하기 위한 기존 호환 데이터로 보존하고 이유를 주석에 남긴다. 설정의 기본값·손상 값 처리, 예외 처리와 키 검증 규칙은 기존 회귀로 유지한다. 새 우회/의존성/공통 계층은 도입하지 않는다.
+- **검증 기준**: 전체 소스의 Java 21 `--release 21 -Xlint:all` 빌드, 기존 52검사, diff 검사, 설정/메뉴 레이아웃·기록 전후 비교와 macOS 실제 조작으로 동작을 확인한다. 원래 setting.txt/점수 파일은 변경하지 않고 별도 임시 앱/파일을 사용한다. Windows와 별도 LSP/AST·보안 스캐너는 제공 범위 밖이다.
+- **검토 분리·상태**: 구현자는 위 범위만 수정하며 별도 읽기 전용 검토자가 사전 계획과 최종 diff/검증 근거를 확인한다. REF-09와 같은 refactor/preview-input 브랜치에서 구현·검증을 마쳤다. 후속 사용자 요청에 따라 REF-10을 로컬 커밋하고 REF-09·10 PR로 게시한다.
+
+#### REF-10 구현·검증 결과 (2026-10-22)
+
+- **비포 → 애프터**: Tetris의 중복 세미콜론/와일드카드 import를 단일 Maincontainer import로 바꿨다. Settingpanel에서 어디에도 전달하지 않던 gbc/insets 생성 두 줄을 제거하고, 버튼 크기 지역 변수는 실제 계산 위치에 선언하며 메뉴 이동 끝의 불필요한 return 두 개를 제거했다. 배치값/계산식은 바꾸지 않았다.
+- **주석·이름**: CardLayout/루트 패널/화면 제거/색상 모드 설명을 실제 동작에 맞췄다. Board의 잘못된 스타일 주석을 삭제하고 protected 오타와 이름 입력 숫자 범위 설명을 고쳤다. h_w → windowDimensions, private usrname → userName으로 변경했으며 이름으로 필드를 조회하는 테스트 두 곳도 함께 수정했다. resetScore는 기존 설정 파일의 export 항목을 유지하기 위해 보존한다는 주석을 추가했다. Enter 정책·클래스명·패키지명·저장 형식은 유지한다.
+- **회귀·컴파일**: production 수정 전 관련 기존 7검사를 통과했고, 삭제 단계 후 메뉴/설정/키 3검사를 통과했다. 최종 Java 21 `--release 21 -Xlint:all` 컴파일 오류 0, 기존 경고 37개, 전체 회귀 52/52 통과다. 기존 테스트 범위가 충분해 새 검사를 추가하지 않았다.
+- **전후 비교**: 세 창 크기 × 설정/점수판 8상태의 24 PNG와 24 배치/텍스트/스타일 기록이 48/48 byte-identical이다. Board·Maincontainer·Tetris의 javap 실행 코드가 전후 동일하며 Gamepanel도 변경한 private 필드명을 정규화하면 동일하다. Settingpanel은 삭제 대상 이외 배치/입력 로직 변경이 없다.
+- **macOS 실제 조작**: production 소스를 별도 앱으로 패키징해 OS 입력으로 메뉴 선택, 창 크기 600X500 → 750X625 저장과 실제 프레임 625×778 적용, 게임 시작/하드드롭/게임 오버, 숫자 이름 58 입력, 58:186 저장과 점수판 표시, 설정 메뉴의 점수 초기화, 시작 화면 복귀를 확인했다. resetScore:false export도 유지됐다. 초기 일부 입력은 포커스 전환으로 중단되거나 화면 교체 시 KEY_RELEASED가 기록되지 않아, 실제 포커스 로그/화면으로 현재 상태를 확인한 뒤 이어서 검증했다. 실패한 관찰을 제품 성공으로 간주하지 않았으며 최종 파일·화면 결과를 별도로 확인했다.
+- **독립 검토·근거**: 별도 읽기 전용 검토자가 계획 CLEAR 및 최종 발견 이슈 0건을 보고했다. 독립 fresh 빌드와 핵심 회귀 6종·diff 검사·resetScore export 확인을 통과했다. 전용 LSP/AST·보안 스캐너는 제공되지 않아 형식 판정 COMMENT, 코드 기준 승인 차단 사유 없음이다. `artifacts/ref10/`에 단계별 로그/비교/소스 해시/native 입력·캡처·verification-summary.json을 보관한다. GUI/검증 소스 해시가 현재 코드와 일치하고 원래 설정·점수 파일은 전후 동일하다. Windows 실행은 미검증이며 사용자 요청에 따라 현재 변경을 로컬 커밋하고 REF-09·10 PR로 게시한다.
 
 ## 6. 순수 정리와 구분해서 결정할 정책
 
@@ -388,7 +422,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ## 7. 테스트 근거와 아직 확인하지 못한 부분
 
-- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 현재 26개 검사가 있다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀 + 블록 초기값 + 메뉴 7개). 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
+- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 분석 작성 당시 26개 검사가 있었다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀 + 블록 초기값 + 메뉴 7개). REF-09 완료 시점의 현재 검사는 52개이며 각 항목별 추가 내역은 5절 실행 기록을 따른다. 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
 - **이전 실행 기록**: 2026-10-21 저장된 [refactoring-tests-run.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-run.log:1>)은 수정 브랜치 16/16 통과다. [refactoring-tests-unfixed-main.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-unfixed-main.log:1>)에는 당시 미수정 main `e6f2d5c`에서 설정 관련 네 검사가 실패한 기록이 있다.
 - **분석 작성 당시**: 문서 작성만 수행했고 테스트를 실행하지 않았다.
 - **후속 오류 해결 요청 검증 (2026-10-22)**: 전체 게임 소스 16개와 회귀 테스트를 Java 21 `--release 21 -Xlint:all`로 컴파일해 오류 0, 회귀 검사 16/16 통과. 컴파일 경고는 남아 있으며 새 리팩토링 범위로 확대하지 않았다.
@@ -419,7 +453,9 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 | 2026-10-22 | REF-07 1차 | 충돌·회전 판정만 화면 없는 계산 클래스로 분리 | 회귀 42/42·판정 26,664건 동일·게임 42상태 렌더 동일·macOS 실제 조작 15단계 완료, 로컬 커밋 |
 | 미정 | REF-07 후속 | 줄 삭제·점수·레벨 및 입력/Timer/화면 연결 범위 논의 | 구현 전 |
 | 2026-10-22 | REF-08 | 점수 파일 저장·읽기/정렬·초기화를 ScoreStore 한곳으로 이동 | 회귀 48/48·점수판/설정 24상태 동일·macOS 실제 조작 11단계 완료, 로컬 커밋 |
-| 미정 | REF-09~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
+| 2026-10-22 | REF-09 | 다음 블록 직접 전달로 미리보기의 Gamepanel/Board 역조회 제거 | 회귀 52/52·미리보기 336상태/게임 42상태 동일, 로컬 커밋 |
+| 2026-10-22 | REF-10 | 오래된 주석·미사용 코드·작은 변수명 정리 | 회귀 52/52·설정/점수판 24상태 동일·macOS 실제 조작 완료, 로컬 커밋 |
+| 미정 | DEC-01~05 | 각 항목의 합의·논의 상태는 6절 참조 | 정책 결정 전 |
 
 
 ## 9. 조건부 오류 해결 기록 커밋

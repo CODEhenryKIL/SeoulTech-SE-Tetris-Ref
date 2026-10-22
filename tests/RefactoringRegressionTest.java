@@ -83,6 +83,10 @@ public final class RefactoringRegressionTest {
         new Check("block-rotation", "7종 블록의 칸 수·색·시계 방향 회전", RefactoringRegressionTest::blockRotation),
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
         new Check("block-generation-lifecycle", "시작의 두 블록 생성·난수 소비와 게임판 간 생성 독립성", RefactoringRegressionTest::blockGenerationLifecycle),
+        new Check("preview-shapes", "미리보기 7종·4회전의 전체 문자·색과 입력 불변", RefactoringRegressionTest::previewShapes),
+        new Check("preview-replacement", "미리보기 교체·인스턴스 독립과 전달 후 표시 유지", RefactoringRegressionTest::previewReplacement),
+        new Check("preview-direct", "게임 화면 없는 미리보기 구성·교체와 입력 참조 비보유", RefactoringRegressionTest::previewDirect),
+        new Check("preview-lifecycle", "시작·이동·회전·일시정지 중 미리보기 갱신 시점", RefactoringRegressionTest::previewLifecycle),
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
         new Check("collision-boundaries", "7종·4회전의 벽·바닥·고정 블록과 빈 칸 판정", RefactoringRegressionTest::collisionBoundaries),
         new Check("rotation-boundaries", "회전 좌표 보정·위쪽 탐색 순서와 범위·상단·빈 칸", RefactoringRegressionTest::rotationBoundaries),
@@ -985,7 +989,7 @@ public final class RefactoringRegressionTest {
                 prepare(board, current, 0, 18);
                 set(board, "next", next);
                 fixedCell(board, 3, 0);
-                fixture.game.drawNextBoard();
+                fixture.game.drawNextBoard(fixture.board.getNextBlock());
                 Object preview = get(get(fixture.game, "nextblockpanel"), "textChunks");
                 Random random = generationRandom(board);
                 random.setSeed(205);
@@ -1034,7 +1038,95 @@ public final class RefactoringRegressionTest {
         }
     }
 
+    private static void updatePreview(GameFixture fixture, Block next) throws Exception {
+        set(fixture.board, "next", next);
+        fixture.game.drawNextBoard(fixture.board.getNextBlock());
+    }
+
+    private static void previewShapes() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            for (Block block : new Block[] {new IBlock(), new JBlock(), new LBlock(), new OBlock(), new SBlock(), new TBlock(), new ZBlock()}) {
+                for (int rotation = 0; rotation < 4; rotation++) {
+                    Field shapeField = Block.class.getDeclaredField("shape");
+                    shapeField.setAccessible(true);
+                    Object shape = shapeField.get(block);
+                    String before = Arrays.deepToString((int[][]) shape);
+                    java.awt.Color color = block.getColor();
+                    updatePreview(fixture, block);
+                    assertPreview(fixture.game, block);
+                    require(shapeField.get(block) == shape && Arrays.deepToString((int[][]) shape).equals(before)
+                            && block.getColor().equals(color), "미리보기 구성은 입력 블록을 변경하면 안 됩니다.");
+                    block.rotate();
+                }
+            }
+        }
+    }
+
+    private static void previewReplacement() throws Exception {
+        try (GameFixture first = new GameFixture(); GameFixture second = new GameFixture()) {
+            Block horizontal = new IBlock();
+            horizontal.rotate();
+            updatePreview(first, horizontal);
+            updatePreview(second, new TBlock());
+            Object secondChunks = get(get(second.game, "nextblockpanel"), "textChunks");
+            for (Block next : new Block[] {new IBlock(), new OBlock(), new TBlock()}) {
+                updatePreview(first, next);
+                assertPreview(first.game, next);
+                require(get(get(second.game, "nextblockpanel"), "textChunks") == secondChunks,
+                    "다른 미리보기의 표시를 바꾸면 안 됩니다.");
+                assertPreview(second.game, new TBlock());
+            }
+            Block next = new JBlock();
+            updatePreview(first, next);
+            next.rotate();
+            assertPreview(first.game, new JBlock());
+            updatePreview(first, next);
+            assertPreview(first.game, next);
+        }
+    }
+
+    private static void previewDirect() throws Exception {
+        Nextblockpanel panel = new Nextblockpanel();
+        require(((List<?>) get(panel, "textChunks")).isEmpty(), "초기 미리보기는 비어 있어야 합니다.");
+        for (Block next : new Block[] {new IBlock(), new TBlock(), new OBlock()}) {
+            panel.drawNextBoard(next);
+            assertPreview(panel, next);
+        }
+        Block next = new LBlock();
+        panel.drawNextBoard(next);
+        next.rotate();
+        assertPreview(panel, new LBlock());
+        panel.drawNextBoard(next);
+        assertPreview(panel, next);
+        for (Field field : Nextblockpanel.class.getDeclaredFields()) {
+            require(!Gamepanel.class.isAssignableFrom(field.getType()) && !Block.class.isAssignableFrom(field.getType()),
+                "미리보기는 Gamepanel이나 변경 가능한 Block을 필드로 보유하면 안 됩니다.");
+        }
+    }
+
+    private static void previewLifecycle() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            Block next = fixture.board.getNextBlock();
+            assertPreview(fixture.game, next);
+            Object chunks = get(get(fixture.game, "nextblockpanel"), "textChunks");
+            fixture.board.moveLeft();
+            fixture.board.moveRight();
+            fixture.board.rotate();
+            fixture.board.moveDown();
+            fixture.board.togglePause();
+            fixture.board.togglePause();
+            fixture.board.timer.stop();
+            require(fixture.board.getNextBlock() == next && get(get(fixture.game, "nextblockpanel"), "textChunks") == chunks,
+                "이동·회전·일시정지는 next나 미리보기 청크를 갱신하면 안 됩니다.");
+            assertPreview(fixture.game, next);
+        }
+    }
+
     private static void assertPreview(Gamepanel game, Block next) throws Exception {
+        assertPreview((Nextblockpanel) get(game, "nextblockpanel"), next);
+    }
+
+    private static void assertPreview(Nextblockpanel panel, Block next) throws Exception {
         StringBuilder expected = new StringBuilder("      \n      \n");
         for (int row = 0; row < next.height(); row++) {
             expected.append(' ');
@@ -1042,7 +1134,7 @@ public final class RefactoringRegressionTest {
             expected.append('\n');
         }
         StringBuilder actual = new StringBuilder();
-        for (Object chunk : (List<?>) get(get(game, "nextblockpanel"), "textChunks")) {
+        for (Object chunk : (List<?>) get(panel, "textChunks")) {
             actual.append(get(chunk, "text"));
             require(get(chunk, "color").equals(next.getColor()), "미리보기 색이 새 next와 같아야 합니다.");
         }
@@ -1121,7 +1213,7 @@ public final class RefactoringRegressionTest {
 
     private static void scoreSave() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
-            set(fixture.game, "usrname", "TESTPLAYER");
+            set(fixture.game, "userName", "TESTPLAYER");
             fixture.board.addScore(321);
             call(fixture.game, "saveScore");
             require(Files.readString(Path.of("tetris_score.txt")).contains("TESTPLAYER:321"), "게임에서 점수를 저장해야 합니다.");
@@ -1148,7 +1240,7 @@ public final class RefactoringRegressionTest {
     }
 
     private static void saveViaGame(Gamepanel game, String name, int score) throws Exception {
-        set(game, "usrname", name);
+        set(game, "userName", name);
         set(game, "score", score);
         call(game, "saveScore");
     }

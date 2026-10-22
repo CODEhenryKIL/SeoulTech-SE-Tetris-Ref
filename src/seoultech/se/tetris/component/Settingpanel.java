@@ -15,7 +15,7 @@ public class Settingpanel extends JPanel{
     버튼 추가 시 지침
     1. OptionButton 객체 생성
     - OptionButton(Option 이름, Option 내용(없을 시 null 전달))
-    2. proteced void isPressed() 오버라이딩 하기
+    2. protected void isPressed() 오버라이딩 하기
     - 버튼이 눌렸을 때 발생되는 이벤트 함수를 구현하기.
     3. 해당 화면의 menu.add(JPanel parent, OptionButton child)로 버튼 등록하기
     - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (기존 동작 유지: 최대 11개 등록 가능)
@@ -45,15 +45,11 @@ public class Settingpanel extends JPanel{
         HEIGHT = maincontainer.getConfiguredHeight();
         WIDTH = maincontainer.getConfiguredWidth();
 
-        int panelWidth = 0; int panelHeight = 0;
-
         settingPanel = new JPanel();
         settingPanel.setLayout(new GridBagLayout());
         settingPanel.setBounds(10, 10, WIDTH-20, 3*(HEIGHT-20)/4);
         settingPanel.setBorder(BorderFactory.createLineBorder(changeColor(Color.GRAY), 1));
         settingPanel.setOpaque(false);
-        GridBagConstraints gbc = new GridBagConstraints();
-        gbc.insets = new Insets(10, 10, 10, 10);
 
             // 테트리스 게임 화면의 크기를 조절 - 최소 3가지 이상 미리 정의된 크기.
             windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.getWindowSize()) {
@@ -87,7 +83,7 @@ public class Settingpanel extends JPanel{
                 }
             };
             menu.add(settingPanel, resetScoreOption);
-            // 색맹 모드 켜고 끄기.
+            // 색상 모드를 정해진 순서대로 변경한다.
             colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.getColorPalette()) {
                 @Override 
                 protected void isPressed() {
@@ -95,7 +91,7 @@ public class Settingpanel extends JPanel{
                 }
             };
             menu.add(settingPanel, colorBlindOption);
-            //모든 설정으로 기본 설정으로 되돌리기.
+            // 모든 설정을 기본값으로 되돌린다.
             resetSettingOption = new OptionButton("Reset setting", null) {
                 @Override 
                 protected void isPressed() {
@@ -117,8 +113,8 @@ public class Settingpanel extends JPanel{
                 maincontainer.exitSettingEnterStart();
             }
         };
-        panelWidth = (int) exitButton.getPreferredSize().getWidth();
-        panelHeight = (int) exitButton.getPreferredSize().getHeight();
+        int panelWidth = (int) exitButton.getPreferredSize().getWidth();
+        int panelHeight = (int) exitButton.getPreferredSize().getHeight();
         exitButton.setBounds((WIDTH-panelWidth)/2, (3*(HEIGHT-20)/4+10)+((HEIGHT-10)-(3*(HEIGHT-20)/4+10)-panelHeight)/2, panelWidth, panelHeight);
         menu.add(this, exitButton);
 
@@ -155,14 +151,12 @@ public class Settingpanel extends JPanel{
         menu.move(-1);
         this.revalidate();
         this.repaint();
-        return;
     }
 
     private void selectDown() {
         menu.move(1);
         this.revalidate();
         this.repaint();
-        return;
     }
 
     private void selectEnter() {
