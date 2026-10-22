@@ -7,7 +7,6 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.util.ArrayList;
 
 public class Startpanel extends JPanel{
 
@@ -15,6 +14,7 @@ public class Startpanel extends JPanel{
     private Maincontainer maincontainer;
     private int width;
     private int height;
+    private final MenuButtons<Button> menu = new MenuButtons<>(new Insets(2, 2, 2, 2));
 
     public Startpanel(Maincontainer maincontainer) {
         width = maincontainer.getConfiguredWidth(); height = maincontainer.getConfiguredHeight();
@@ -23,7 +23,6 @@ public class Startpanel extends JPanel{
 		setLayout(new GridBagLayout()); // 컴포넌트 간의 배치를 자유롭게 하기 위해서 GridBagLayout을 사용
 		setBackground(changeColor(Color.LIGHT_GRAY)); // background color로 light gray
 		setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // padding 값 조절, 필요 시 제거 가능
-        Button.resetStaticField();
 
 		// Title 컴포넌트 만들기
         JLabel titlelabel = new JLabel("TETRIS", SwingConstants.CENTER);
@@ -51,28 +50,28 @@ public class Startpanel extends JPanel{
                 Startpanel.this.maincontainer.exitStartEnterGame();
             }
         };
-        Button.addButton(buttonPanel, startButton);
+        menu.add(buttonPanel, startButton);
         Button menuButton = new Button("MENU") {
             @Override 
             protected void isPressed() {
                 Startpanel.this.maincontainer.exitStartEnterSetting();
             }
         };
-        Button.addButton(buttonPanel, menuButton);
+        menu.add(buttonPanel, menuButton);
         Button scoreboardButton = new Button("SCORE") {
             @Override 
             protected void isPressed() {
                 Startpanel.this.maincontainer.exitStartEnterScoreboard();
             }
         };
-        Button.addButton(buttonPanel, scoreboardButton);
+        menu.add(buttonPanel, scoreboardButton);
         Button exitButton = new Button("EXIT") {
             @Override 
             protected void isPressed() {
                 System.exit(0);
             }
         };
-        Button.addButton(buttonPanel, exitButton);
+        menu.add(buttonPanel, exitButton);
 
         // Button 컴포넌트 위치를 위한 제약사항
         gbc.gridy = 1; // grid[0][1]에 위치
@@ -110,36 +109,28 @@ public class Startpanel extends JPanel{
 	}
 
     private void selectUp() {
-        Button.getSelectedButton().setOpaque(false);
-        Button.reduceCurrentSelected();
-        Button.getSelectedButton().setOpaque(true);
+        menu.move(-1);
         this.revalidate();
         this.repaint();
     }
 
     private void selectDown() {
-        Button.getSelectedButton().setOpaque(false);
-        Button.addCurrentSelected();
-        Button.getSelectedButton().setOpaque(true);
+        menu.move(1);
         this.revalidate();
         this.repaint();
     }
 
     private void selectEnter() {
-        Button.getSelectedButton().isPressed();
+        menu.selected().isPressed();
     }
 
     private class Button extends JPanel {
 
         protected JLabel text;
-        private static int numberOfOptions = 0;
-        private static int currentSelected = 0;
-        private static ArrayList<Button> buttonList;
 
         public Button(String buttonName) {
             setBackground(changeColor(Color.GRAY));
-            if (numberOfOptions == 0) setOpaque(true);
-            else setOpaque(false);
+            setOpaque(false);
 
             text = new JLabel(buttonName, SwingConstants.CENTER);
             text.setFont(new Font("Courier", Font.BOLD, 16));
@@ -154,36 +145,5 @@ public class Startpanel extends JPanel{
 
         protected void isPressed() {}
 
-        protected static void addButton(JPanel parent, Button child) {
-            if (numberOfOptions > 10) return;
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridx = 0; gbc.gridy = numberOfOptions; gbc.fill = GridBagConstraints.NONE;
-            gbc.insets = new Insets(2, 2, 2, 2);
-            parent.add(child, gbc);
-            numberOfOptions++;
-            buttonList.add(child);
-        }
-
-        protected static void addCurrentSelected() {
-            if (currentSelected >= numberOfOptions - 1) {
-                currentSelected = 0;
-            } else currentSelected++;
-        }
-
-        protected static void reduceCurrentSelected() {
-            if (currentSelected <= 0) {
-                currentSelected = numberOfOptions - 1;
-            } else currentSelected--;
-        }
-
-        protected static Button getSelectedButton() {
-            return buttonList.get(currentSelected);
-        }
-
-        protected static void resetStaticField() {
-            numberOfOptions = 0;
-            currentSelected = 0;
-            buttonList = new ArrayList<>();
-        }
     }
 }

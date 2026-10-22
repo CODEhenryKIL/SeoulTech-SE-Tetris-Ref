@@ -2,7 +2,7 @@
 
 작성일: 2026-10-22
 
-상태: PR10 오류·REF-01 로컬 완료 / REF-02 코드·자동 검사 완료, 실제 조작 미확인 / REF-03 이후 논의 진행
+상태: PR10 오류·REF-01~03 로컬 구현·검증 완료(macOS) / REF-04 이후 논의 진행
 
 이 문서를 앞으로 리팩토링 논의를 이어갈 기준으로 사용한다. 기존 [tetris-improvements.md:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/tetris-improvements.md:1>)와 10월 20일 계획 초안은 참고 자료로 두고 원문을 변경하지 않는다. 목표는 **중복 코드 삭제와 가독성 개선을 우선하고, 1차 기능을 유지하면서 2차 요구사항에 필요한 경계를 정리하는 것**이다.
 
@@ -70,7 +70,7 @@
 | `Nextblockpanel` | 다음 블록 텍스트와 색·배율 렌더링 | Gamepanel의 getter를 거쳐 Board의 다음 블록을 조회. [Nextblockpanel.java:96](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:96>), [Nextblockpanel.java:108](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:108>) |
 | `Scoreboardpanel` | 파일 읽기·파싱·정렬·상위 10개 표시·시작 화면 복귀 | [Scoreboardpanel.java:72](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Scoreboardpanel.java:72>), [Scoreboardpanel.java:87](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Scoreboardpanel.java:87>) |
 | `Block` + 7개 구체 블록 | 모양·색·가변 회전·가로/세로 길이 | `IBlock/JBlock/LBlock/OBlock/SBlock/TBlock/ZBlock`; 각 생성자에서 모양과 색 대입. [Block.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/Block.java:7>), [OBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/OBlock.java:7>) |
-| 회귀 테스트 | 설정·생성·이동/회전·점수·정지·기록·화면 크기·복귀·블록 초기값의 19개 검사 | [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>) |
+| 회귀 테스트 | 설정·생성·이동/회전·점수·정지·기록·화면 크기·복귀·블록 초기값·메뉴의 26개 검사 | [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>) |
 
 **확인된 연결**: Gamepanel은 Board를 소유하며 조작 메서드를 호출한다. Board도 Gamepanel을 참조해 점수·미리보기 갱신, 정지·재개·게임 종료 UI를 호출한다. 설정 파일은 Maincontainer 내부에서 처리하지만 점수 파일은 Gamepanel의 쓰기, Scoreboardpanel의 읽기, Settingpanel의 초기화로 나뉜다.
 
@@ -83,7 +83,7 @@
 | 기존 항목 | 현재 판정 | 현재 코드 기준으로 바뀌어야 할 설명 |
 |---|---|---|
 | 새 블록 시작 위치 가운데 계산 | **수정 방향 합의·구현 전** | O블록의 시작 x가 3에서 4로 바뀌는 동작 변경을 포함한다. 초기·일반 고정 후·하드드롭 후 생성과 게임 오버 판정에 같은 계산을 적용하고 검증 |
-| Block 생성자의 중복 초기화 제거 | **REF-02 코드·자동 검사 완료, GUI 조작 미확인** | 부모 기본 생성자 8줄 삭제. 7종 하위 생성자 유지, 초기 모양·색 고정 검사 포함 19/19 통과 |
+| Block 생성자의 중복 초기화 제거 | **REF-02 구현·검증 완료(macOS)** | 부모 기본 생성자 8줄 삭제. 7종 하위 생성자 유지, 초기 모양·색 고정 검사 포함 19/19 통과 |
 | 세 설정 setter의 입력 검증 | **기존 API 설명 폐기·분석 대상 개정** | 해당 setter는 삭제됨. 현재 `changeSetting()/modifySetting()`, UI와 파일 로드의 검증 책임을 검토 |
 | 중복 창 표시 호출 제거 | **REF-01 구현·검증 완료(macOS)** | 진입점의 중복 표시 호출을 제거하고 `applySetting()`의 표시는 유지. 최초 실행과 키 입력 확인 |
 | 시작 화면 복귀 중복 제거 | **REF-01 구현·검증 완료(macOS)** | 화면 정리·설정 적용 후 `enterStart()` 재사용. 복귀·첫 입력·크기·색상·이전 패널 잔존 검증 완료 |
@@ -109,13 +109,13 @@
 
 PR10 오류 처리 후 아래 순서로 하나씩 상의하는 안이다. 번호는 이 문서의 식별자이며 기존 팀 작업 카드 번호가 아니다.
 
-4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02의 중복 기본값 삭제는 구현·자동 검사를 마쳤으며 실제 조작 확인은 아래 한계를 따른다. 4절 6번은 REF-04에서 현재 코드 기준의 정리 범위를 더 살펴본다.
+4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02·REF-03의 구현·자동 검사와 macOS 실제 조작을 마쳤으며 검증 범위는 아래 실행 기록을 따른다. 4절 6번은 REF-04에서 현재 코드 기준의 정리 범위를 더 살펴본다.
 
 | 순서 | 번호 | 개선 후보 | 예상 범위·위험 | 상태 |
 |---|---|---|---|---|
 | 1 | REF-01 | 중복 창 표시와 시작 화면 복귀 흐름 정리 | 작음~중간; 크기·포커스 순서 주의 | 구현·검증 완료(macOS) |
-| 2 | REF-02 | Block 기본 초기화 중복 삭제 | 작음; 초기화 누락 방지 필요 | 코드·자동 검사 완료, GUI 조작 미확인 |
-| 3 | REF-03 | 메뉴 선택 상태 소유와 유사 코드 정리 | 중간; 생성·복귀 시 선택 상태 주의 | 논의 대기 |
+| 2 | REF-02 | Block 기본 초기화 중복 삭제 | 작음; 초기화 누락 방지 필요 | 구현·검증 완료(macOS) |
+| 3 | REF-03 | 메뉴 선택 상태 소유와 유사 코드 정리 | 중간; 생성·복귀 시 선택 상태 주의 | 구현·검증 완료(macOS) |
 | 4 | REF-04 | 설정 파싱·검증·변경 경계 정리 | 중간; 파일 호환·현재값 유지 필요 | 논의 대기 |
 | 5 | REF-05 | Board의 중복된 고정·승계·그리기 흐름 정리 | 중간~큼; 호출 순서가 게임 결과에 영향 | 논의 대기 |
 | 6 | REF-06 | 블록 생성 책임 분리 | 중간; 2차 난이도·아이템의 확장 지점 | 논의 대기 |
@@ -140,7 +140,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 **실행 기록 (2026-10-22)**
 
-- **브랜치·PR 구분**: 기존 버그 수정은 `refactor/code-cleanup`, 리팩토링은 `refactor/start-screen-flow`에서 관리한다. REF별 커밋을 유지하고 관련 REF 2~3개를 하나의 PR로 묶는다. 첫 묶음은 REF-01·REF-02이며 REF-03 포함 여부는 논의 후 결정한다. 이 브랜치는 버그 수정 커밋 `2745dc8`에서 분기했으므로, 버그 PR을 먼저 main에 반영한 뒤 리팩토링 PR의 비교 범위를 확인한다.
+- **브랜치·PR 구분**: 기존 버그 수정은 `refactor/code-cleanup`, 리팩토링은 `refactor/start-screen-flow`에서 관리한다. REF별 커밋을 유지하고 관련 REF 2~3개를 하나의 PR로 묶는다. 첫 묶음은 관련 메뉴 정리를 포함한 REF-01~03으로 관리한다. 이 브랜치는 버그 수정 커밋 `2745dc8`에서 분기했으므로, 버그 PR을 먼저 main에 반영한 뒤 리팩토링 PR의 비교 범위를 확인한다.
 
 - **코드 변경**: `Tetris.main()`의 중복 표시를 제거했다. 게임·점수판은 기존 패널 제거 후 `enterStart()`를 호출한다. 설정 복귀는 기존 root 분리·재부착을 보존한 채 설정 패널 제거 → root 분리 → 설정 적용 → `enterStart()` 순서로 변경했다. 새 Startpanel이 변경된 설정 크기·색을 읽고 공통 CardLayout 경로로 표시된다.
 - **회귀 검사**: `start-return` 검사를 추가해 게임·점수판 왕복 3회, 이전 패널 제거, 새 시작 화면 생성, START 선택 초기화를 확인한다. 수정 전·후 전체 **18/18 통과**. Java 21 전체 컴파일과 `git diff --check` 통과. serial/Unsafe 관련 컴파일 경고는 남아 있다.
@@ -173,7 +173,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 - **코드 변경**: `Block.java`의 명시적 기본 생성자 8줄만 삭제했다. 모양·색 필드와 공통 조회·회전 메서드, 7종 하위 생성자는 유지했다. 컴파일러가 제공하는 공개 기본 생성자로 기존 생성 호출이 유지된다.
 - **수정 전후 검증**: 7종 전체 초기 행렬·정확한 색을 고정하는 `block-initialization`을 추가했다. 생산 코드 변경 전·후 모두 **19/19 통과**. Java 21 `--release 21 -Xlint:all` 전체 컴파일 성공, 기존 serial/Unsafe 등의 경고는 남아 있다. 별도 빌드 도구·lint·LSP 구성은 없으며 컴파일 진단과 diff 검사를 수행했다.
 - **추가 근거·독립 검토**: `javap -p` 기준 `Block()` 포함 API 목록이 전후 동일하고 7종 하위 클래스의 `.class` 파일도 전후 바이트가 동일하다. 계획과 구현을 별도로 검토했으며 수정 요청은 없었다. 의존성·새 추상화·예외 무시 경로는 추가하지 않았다.
-- **실사용 한계**: 변경된 소스로 만든 테스트 앱의 시작 화면 표시는 확인했다. 자동 조작 연결에서 장시간 대기와 활성화 실패가 발생했고, 수동 활성화를 요청한 뒤에도 실제 키 수신 로그는 0건이었다. 따라서 현재·다음 블록 표시와 이동·회전·하드드롭의 실제 조작은 **미확인**이다. 자동 검사 통과를 실제 조작 통과로 기록하지 않는다. Windows 실행도 미검증이다.
+- **실사용 후속 확인 완료**: 최초 도구 연결 당시에는 입력이 수신되지 않아 미검증으로 기록했으나, 후속 요청에서 현재 코드(REF-03 포함)를 AppleScript로 실제 조작했다. 현재 S블록·다음 O블록 표시, 좌우 이동, 변경한 W키 회전, B키 하드드롭 후 현재 O블록·다음 I블록 승계를 화면과 입력 로그로 확인했다. 네 번 회전한 뒤 보드 캡처의 픽셀이 처음과 같고, 하드드롭 뒤 고정 블록·점수 증가를 확인했다. 이로써 계획한 macOS 실제 조작 확인을 마쳤다. 7종 전체 초기값은 자동 검사로 고정하며, 모든 종류를 실제 화면에서 관찰했다는 의미는 아니다. Windows 실행은 미검증이다.
 - **데이터·근거**: 실제 저장소의 `setting.txt`·`tetris_score.txt`는 전후 바이트가 동일하다. 테스트 앱은 별도 임시 파일을 사용했다. 저장소 밖 `artifacts/ref02/`에 수정 전후 컴파일·19개 검사 로그, API 비교, 하위 클래스·데이터 무변경 확인과 GUI 입력 로그를 보관한다. REF-02도 독립 커밋으로 관리하며, 원격 push·PR 생성은 별도로 진행한다.
 
 - **구현 전 확인 사실 / 확신 높음**: 추상 Block의 생성자는 O모양/노란색을 넣고, OBlock을 포함한 7종 생성자는 자기 모양/색을 다시 넣었다. [Block.java:10](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/Block.java:10>), [OBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/OBlock.java:7>), [IBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/IBlock.java:7>).
@@ -183,11 +183,32 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ### REF-03. 메뉴 상태와 유사 버튼 코드
 
-- **확인 사실 / 확신 높음**: Startpanel.Button, Settingpanel.OptionButton, ChangeKeyButton이 라벨·크기·선택 이동·목록 관리를 유사하게 구현하고, 인덱스와 목록을 static으로 가진다. [Startpanel.java:132](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Startpanel.java:132>), [Settingpanel.java:377](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:377>), [Settingpanel.java:445](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:445>).
-- **추론**: 현재 한 화면씩 생성·reset하는 흐름에서는 동작하지만 여러 인스턴스나 재사용을 도입하면 다른 인스턴스의 목록/선택 상태를 덮어쓸 수 있다. 실제 사용자 경로 전체에서 발생하는 오류로 재현한 것은 아니다.
-- **제안**: 선택 목록·인덱스가 각 화면에 속하도록 경계를 먼저 정한다. 정말 동일한 표시/이동 코드만 작은 공통 기능으로 모으고, 시작·설정·키 변경의 서로 다른 행동은 분리한다.
+**실행 계획 (2026-10-22, `refactor/start-screen-flow`)**
+
+1. ↑·↓ 순환·선택 강조, 시작 메뉴의 MENU/SCORE 진입, 키 설정 왕복 후 상위 선택 유지·리스너 1개 복원, 키 입력 대기 중 예약·중복 키 처리를 검사한다. 같은 종류의 화면 두 개를 생성해도 서로의 선택·목록이 바뀌지 않아야 한다는 검사를 추가한다. 기존 동작 검사는 수정 전에 통과시키고, 인스턴스 간섭 검사의 기존 실패는 별도 기록한다.
+2. 작은 package-private `MenuButtons`에 목록·선택 번호·등록·순환·강조 처리만 모으고, 시작·설정·키 변경 화면이 각각 별도 객체를 소유하게 한다. 목록 길이로 개수를 계산하며 static 목록·선택 번호·reset 호출을 없앤다. 시작 화면의 간격(2px), 설정 화면의 간격(0px), 기존 등록 상한의 실제 동작(최대 11개)은 유지한다. 상한 정책 변경은 별도 논의 대상으로 둔다.
+3. 키 변경 메뉴는 표시 코드가 동일한 기존 `OptionButton`을 재사용한다. Enter의 실행 내용은 각 화면에 유지하며, 키 변경 대상 번호는 해당 키 메뉴의 선택 번호에서 가져온다. 키 입력 대기 동안 방향키가 메뉴 이동으로 처리되지 않도록 현재 리스너 전환을 보존한다.
+4. 시작 화면은 재진입 시 START, 설정 화면은 새로 생성하면 첫 항목, 키 변경 창은 열 때 첫 항목을 선택한다. 키 변경 창에서 저장 후 돌아오면 상위 Change Keys 선택은 유지한다. root 재사용·화면 재생성 정책, 키 파싱·검증 정책, 게임 규칙은 변경하지 않는다.
+5. 전체 Java 21 컴파일·회귀 검사·diff 검사 및 독립 코드 검토를 진행한다. 세 크기의 시작·설정·키 변경 화면을 수정 전후 같은 조건으로 오프스크린 렌더링해 비교한다. 이 비교와 핸들러 기반 검사를 OS의 실제 포커스·키 조작 검증과 구분한다.
+
+**범위·검토 구분**: `Startpanel.java`, `Settingpanel.java`, 작은 공통 메뉴 클래스 1개, 기존 회귀 테스트와 이 문서만 수정한다. 기존 등록 상한의 조용한 반환은 현재 동작 보존을 위해 그대로 한곳으로 옮기며, 새 기본값·예외 무시 경로를 추가하지 않는다. 계획 검토와 구현 후 검토는 별도로 수행한다.
+
+**실행 기록 (2026-10-22)**
+
+- **변경**: `Startpanel`·`Settingpanel`·`ChangeKeyPanel`의 static 목록·선택·개수 및 reset 코드를 제거했다. 새 `MenuButtons`는 세 화면에서 실제로 공통 사용하며, 키 메뉴는 기존 `OptionButton`을 재사용한다. `MenuButtons` 외 새 생산 클래스나 외부 의존성은 추가하지 않았다.
+- **검사 전후**: 메뉴 순환·강조·Enter 실행, 키 변경 3회 왕복, 입력 모드 전환·예약/중복 키·하드드롭 저장, 등록 상한, 세 인스턴스 독립성 등 **7개 검사**를 추가했다. 생산 코드 수정 전 **23/26 통과**이며 실패 3개는 의도한 인스턴스 간섭 재현뿐이었다. 수정 후 **26/26 통과**. 상한 검사의 내부 등록 어댑터만 static 메서드에서 인스턴스 메뉴로 맞췄고 기대값은 유지했다.
+- **표시 유지**: 동일 Java 21·Metal L&F·EDT에서 `600X500`, `750X625`, `900X750`의 시작·설정·키 변경 메뉴 8상태씩 총 **24개 PNG**와 bounds·preferredSize·opacity 정보를 비교했다. 이미지 24개와 배치 파일 24개 모두 전후 바이트가 동일하다. OS 창 캡처나 실제 키 입력의 증거로 간주하지 않는다.
+- **품질 검사**: Java 21 `--release 21 -Xlint:all` 전체 컴파일·회귀 검사·`git diff --check` 통과. serial/Unsafe/this-escape 및 메뉴 필드의 직렬화 관련 컴파일 경고는 남아 있다. 메뉴 상태의 static 선언·reset·삭제한 버튼 클래스 잔존이 없음을 검색했다. 계획과 구현 diff를 별도로 검토했고 구현 검토는 수정 요청 없이 승인됐다. 검토자가 독립적으로 재실행한 검사도 26/26 통과했다.
+- **실제 조작 경로**: 사용자 요청으로 현재 생산 소스를 다시 컴파일하고 실제 `Tetris.main()`을 실행하는 `TetrisRef03Test` 앱을 만들었다. 임시 데이터와 읽기 전용 입력 관찰 로그만 추가했으며 게임 동작을 직접 호출하는 진단 버튼은 없다. 기존 조작 도구는 앱 접근을 승인하지 않았고 사용자에게 허용 요청도 보이지 않았다. AppleScript 대체 방식을 안내한 뒤 사용자의 재검증 지시에 따라 macOS 실제 키 이벤트를 보냈다. 매 입력 전 대상 앱이 전면인지 확인했으며, AWT 입력 수신·화면 상태 로그와 OS 창 캡처로 결과를 검증했다.
+- **실제 조작 결과**: **50단계 통과**. 시작·설정·키 변경 메뉴의 위/아래 순환, 예약·중복 키 거부, Rotate→W·Hard Drop→B 변경, 키 메뉴 저장·3회 재진입과 상위 선택 유지·리스너 1개 복원, 설정 저장·점수판 왕복·복귀 직후 첫 입력을 확인했다. 변경한 키로 좌우 이동·회전·하드드롭·일시정지·재개·종료를 실행했다. EXIT로 프로세스를 종료한 뒤 새 JVM에서 키 설정 유지도 확인했다. `600X500 → 750X625 → 900X750 → 600X500` 변경·복귀·첫 입력과 root 자식 1개 유지도 모두 통과했다.
+- **네이티브 화면 확인**: 실제 캡처에서 W 한 번 회전 후 보드 픽셀이 달라지고 네 번 후 처음과 일치함을 확인했다. 변경된 키 설정 화면, 게임·미리보기·점수 화면 및 세 크기의 시작 화면을 보관했다. 저장 시 포커스가 옛 패널에서 사라져 Enter의 release 로그가 누락된 경우는 다음 실제 방향키로 복귀한 화면과 선택·리스너 상태를 확인했다. 종료 시 자동화 호출이 지연된 경우도 실제 프로세스 종료와 새 시작 로그로 재실행을 확인했다.
+- **데이터·한계**: 실제 `setting.txt`·`tetris_score.txt`는 전후 동일하다. `artifacts/ref03/`의 `native-menu-checks.json`, `native-session-1.log`, `native-session-2.log`, `native-screenshots/`, `native-rotation-comparison.json`에 실제 조작 근거를 보관한다. 자동 검사 26/26, 오프스크린 24상태 비교와 실제 조작 검증을 구분한다. Windows 실행만 미검증이며 push·PR은 별도로 진행한다.
+
+- **현재 구조 / 확신 높음**: 시작·설정·키 변경 화면이 각각 자기 `MenuButtons`를 소유한다. 목록·선택·등록·순환·강조 처리는 공통으로 사용하며, 키 변경 화면의 중복 버튼 클래스를 제거하고 `OptionButton`을 재사용한다. [MenuButtons.java:9](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/MenuButtons.java:9>), [Startpanel.java:17](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Startpanel.java:17>), [Settingpanel.java:42](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:42>), [Settingpanel.java:193](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:193>).
+- **기존 문제 재현**: 수정 전 같은 종류의 화면 두 개를 생성하면 첫 화면의 입력이 다른 화면의 버튼 목록·선택 상태에 작용하는 현상을 세 독립 검사에서 재현했다. 일반 게임에서 화면을 하나씩 사용하는 경로 전체의 사용자 오류로 재현했다는 의미는 아니다.
+- **적용 범위**: 선택 목록·인덱스를 화면별로 분리하고 동일한 등록·순환·강조 및 키 메뉴 표시 중복을 정리했다. Enter 실행 내용과 키 입력 대기의 예약·중복 검증은 각 화면의 기존 코드를 유지했다.
 - **위험·검증**: START로 초기화할지, 이전 선택을 유지할지가 달라질 수 있다. 위/아래 순환, Enter 동작, 여러 번 진입·복귀, 리스너 중복, 서로 다른 인스턴스 간 간섭을 확인한다.
-- **상의할 사항**: 메뉴 선택 유지 정책과 공통화할 범위. 임의의 최대 버튼 수 제한도 2차 메뉴 수가 정해질 때 함께 검토한다.
+- **후속 논의**: 최대 버튼 수 상한 정책은 2차 메뉴 수가 정해질 때 별도로 검토한다. 이번에는 기존 11개 수용·12번째 미등록 동작을 유지했다.
 
 ### REF-04. 설정 경계와 문자열 반복
 
@@ -256,7 +277,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ## 7. 테스트 근거와 아직 확인하지 못한 부분
 
-- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 현재 19개 검사가 있다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀 + 블록 초기값). 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
+- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 현재 26개 검사가 있다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀 + 블록 초기값 + 메뉴 7개). 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
 - **이전 실행 기록**: 2026-10-21 저장된 [refactoring-tests-run.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-run.log:1>)은 수정 브랜치 16/16 통과다. [refactoring-tests-unfixed-main.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-unfixed-main.log:1>)에는 당시 미수정 main `e6f2d5c`에서 설정 관련 네 검사가 실패한 기록이 있다.
 - **분석 작성 당시**: 문서 작성만 수행했고 테스트를 실행하지 않았다.
 - **후속 오류 해결 요청 검증 (2026-10-22)**: 전체 게임 소스 16개와 회귀 테스트를 Java 21 `--release 21 -Xlint:all`로 컴파일해 오류 0, 회귀 검사 16/16 통과. 컴파일 경고는 남아 있으며 새 리팩토링 범위로 확대하지 않았다.
@@ -279,8 +300,9 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 | 2026-10-22 | PR10-01~03 | 사용자 요청에 따라 조건부 오류 해결 우선 처리 | 기존 `4eabe8d` 적용 확인, Java 21 컴파일 및 회귀 검사 16/16 통과, 로컬 완료 |
 | 미정 | PR10-04 | 상의 대기 | 실제 GUI 원인 미확인 |
 | 2026-10-22 | REF-01 | 중복 표시 제거·시작 화면 복귀 공통화 | 구현 완료, 회귀 18/18 및 macOS 실제 조작 검증 완료 |
-| 2026-10-22 | REF-02 | 부모의 중복 초기화 삭제, 7종 초기 모양·색 검사 보강 | 코드·자동 검사 19/19 완료, 실제 조작 미확인 |
-| 미정 | REF-03~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
+| 2026-10-22 | REF-02 | 부모의 중복 초기화 삭제, 7종 초기 모양·색 검사 보강 | 자동 검사 19/19 및 후속 macOS 실제 조작 검증 완료 |
+| 2026-10-22 | REF-03 | 화면별 메뉴 선택 상태 분리·공통 선택 처리·키 메뉴 표시 재사용 | 회귀 26/26·24상태 렌더 동일·실제 조작 50단계 통과(macOS) |
+| 미정 | REF-04~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
 
 
 ## 9. 조건부 오류 해결 기록 커밋

@@ -1,5 +1,6 @@
 package seoultech.se.tetris.component;
 
+import java.awt.Container;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
@@ -18,6 +19,7 @@ import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Pattern;
 import javax.swing.JPanel;
+import javax.swing.JLabel;
 import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
@@ -44,6 +46,9 @@ public final class RefactoringRegressionTest {
     private static final String MARKER = ".refactoring-test-sandbox";
     private static final String DEFAULT_KEYS = "ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
     private static final String CUSTOM_KEYS = "ROTATE=87,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
+    private static final String[] START_LABELS = {"START", "MENU", "SCORE", "EXIT"};
+    private static final String[] SETTING_LABELS = {"Window Option: ", "Change Keys", "Reset Scoreboard", "Color Option: ", "Reset setting", "Save and Exit"};
+    private static final String[] KEY_LABELS = {"Rotate: ", "Down: ", "Left: ", "Right: ", "Pause: ", "Hard Drop: ", "Save and Exit"};
 
     @FunctionalInterface
     private interface CheckedRunnable {
@@ -55,6 +60,13 @@ public final class RefactoringRegressionTest {
     private static final List<Check> CHECKS = List.of(
         new Check("frame-size", "실제 창 크기와 게임 설정 크기의 독립성", RefactoringRegressionTest::frameSize),
         new Check("start-return", "게임·점수판 왕복 시 이전 패널 제거와 시작 메뉴 초기화", RefactoringRegressionTest::startReturn),
+        new Check("menu-navigation", "세 메뉴의 방향키 순환·강조 및 MENU/SCORE 실행", RefactoringRegressionTest::menuNavigation),
+        new Check("menu-round-trip", "키 설정 반복 왕복 시 선택 유지·리스너 복원", RefactoringRegressionTest::menuRoundTrip),
+        new Check("key-input-mode", "키 입력 대기 중 방향키·예약 키·중복 키 처리", RefactoringRegressionTest::keyInputMode),
+        new Check("menu-capacity", "기존 메뉴 등록 상한 11개와 순환 범위", RefactoringRegressionTest::menuCapacity),
+        new Check("start-menu-isolation", "시작 화면 인스턴스 간 선택 독립성", RefactoringRegressionTest::startMenuIsolation),
+        new Check("setting-menu-isolation", "설정 화면 인스턴스 간 선택 독립성", RefactoringRegressionTest::settingMenuIsolation),
+        new Check("key-menu-isolation", "키 변경 화면 인스턴스 간 선택 독립성", RefactoringRegressionTest::keyMenuIsolation),
         new Check("key-change", "중복 키 거부 → 키 변경 → 저장·재로드", RefactoringRegressionTest::keyChange),
         new Check("reset-settings", "사용자 설정을 기본값으로 복원·저장", RefactoringRegressionTest::resetSettings),
         new Check("unknown-setting", "모르는 설정을 무시하고 정상 설정 유지", RefactoringRegressionTest::unknownSetting),
@@ -194,6 +206,182 @@ public final class RefactoringRegressionTest {
                 "게임 복귀 후 이전 패널이 남으면 안 됩니다.");
             require(((JPanel) get(owner, "startPanel")).isVisible(), "복귀한 시작 화면이 표시돼야 합니다.");
         }
+    }
+
+    private static void menuNavigation() throws Exception {
+        Maincontainer owner = owner("");
+        var layout = new java.awt.CardLayout();
+        JPanel root = new JPanel(layout);
+        set(owner, "cardLayout", layout);
+        set(owner, "mainPanel", root);
+        owner.enterStart();
+        Startpanel start = (Startpanel) get(owner, "startPanel");
+        checkNavigation(start, menuButtons(start, START_LABELS));
+        press(start, KeyEvent.VK_DOWN);
+        press(start, KeyEvent.VK_DOWN);
+        press(start, KeyEvent.VK_ENTER);
+        require(((JPanel) get(owner, "scoreboardPanel")).getParent() == root, "SCORE에서 Enter를 누르면 점수판이 열려야 합니다.");
+        owner.exitScoreboardEnterStart();
+        start = (Startpanel) get(owner, "startPanel");
+        press(start, KeyEvent.VK_DOWN);
+        press(start, KeyEvent.VK_ENTER);
+        Settingpanel setting = (Settingpanel) get(owner, "settingPanel");
+        require(setting.getParent() == root, "MENU에서 Enter를 누르면 설정이 열려야 합니다.");
+        setting.setSize(500, 600);
+        checkNavigation(setting, menuButtons(setting, SETTING_LABELS));
+        press(setting, KeyEvent.VK_DOWN);
+        press(setting, KeyEvent.VK_ENTER);
+        JPanel keys = keyPanel(setting);
+        checkNavigation(keys, menuButtons(keys, KEY_LABELS));
+    }
+
+    private static void menuRoundTrip() throws Exception {
+        Settingpanel setting = new Settingpanel(owner(""));
+        setting.setSize(500, 600);
+        List<JPanel> options = menuButtons(setting, SETTING_LABELS);
+        press(setting, KeyEvent.VK_DOWN);
+        for (int round = 0; round < 3; round++) {
+            press(setting, KeyEvent.VK_ENTER);
+            JPanel keys = keyPanel(setting);
+            require(setting.getKeyListeners().length == 0 && keys.getKeyListeners().length == 1,
+                "키 변경 중에는 상위 메뉴가 같은 입력을 처리하면 안 됩니다.");
+            assertSelection(menuButtons(keys, KEY_LABELS), 0);
+            press(keys, KeyEvent.VK_UP);
+            press(keys, KeyEvent.VK_ENTER);
+            require(keys.getParent() == null && setting.getKeyListeners().length == 1,
+                "복귀하면 키 변경 창은 제거되고 상위 리스너는 하나여야 합니다.");
+            assertSelection(options, 1);
+        }
+        press(setting, KeyEvent.VK_UP);
+        assertSelection(options, 0);
+    }
+
+    private static void keyInputMode() throws Exception {
+        Maincontainer owner = owner("");
+        Settingpanel setting = new Settingpanel(owner);
+        setting.setSize(500, 600);
+        press(setting, KeyEvent.VK_DOWN);
+        press(setting, KeyEvent.VK_ENTER);
+        JPanel keys = keyPanel(setting);
+        List<JPanel> options = menuButtons(keys, KEY_LABELS);
+        press(keys, KeyEvent.VK_ENTER);
+        press(keys, KeyEvent.VK_DOWN);
+        assertSelection(options, 0);
+        require(((Integer[]) get(keys, "currentKey"))[0] == KeyEvent.VK_UP && hasLabel(keys, "Please Enter an Unused Key"),
+            "중복 방향키는 메뉴를 이동시키거나 기존 키를 변경하면 안 됩니다.");
+        press(keys, KeyEvent.VK_V);
+        for (int i = 0; i < 4; i++) press(keys, KeyEvent.VK_DOWN);
+        assertSelection(options, 4);
+        press(keys, KeyEvent.VK_ENTER);
+        press(keys, KeyEvent.VK_ENTER);
+        require(((Integer[]) get(keys, "currentKey"))[4] == KeyEvent.VK_P && hasLabel(keys, "Enter Is Reserved for Exit"),
+            "PAUSE의 Enter 예약 규칙을 유지해야 합니다.");
+        press(keys, KeyEvent.VK_P); // 현재와 같은 키는 허용하고 메뉴 이동 모드로 복귀.
+        require(keys.getKeyListeners().length == 1 && !hasLabel(keys, "Press Key to Change"),
+            "키 입력을 마치면 메뉴 리스너 하나만 복원해야 합니다.");
+        press(keys, KeyEvent.VK_DOWN);
+        assertSelection(options, 5);
+        press(keys, KeyEvent.VK_ENTER);
+        press(keys, KeyEvent.VK_RIGHT);
+        assertSelection(options, 5);
+        require(((Integer[]) get(keys, "currentKey"))[5] == KeyEvent.VK_SPACE,
+            "하드드롭 키 변경 시에도 중복 키를 거부해야 합니다.");
+        press(keys, KeyEvent.VK_B);
+        press(keys, KeyEvent.VK_DOWN);
+        press(keys, KeyEvent.VK_ENTER);
+        String expected = DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=86").replace("HARD_DROP=32", "HARD_DROP=66");
+        require(value(owner.setting, "keySetting").equals(expected), "선택한 Rotate·Hard Drop 키만 변경돼야 합니다.");
+        owner.setting.exportSetting();
+        require(value(owner.new Setting(), "keySetting").equals(expected), "여섯 키의 저장·재로드가 유지돼야 합니다.");
+    }
+
+    private static void startMenuIsolation() throws Exception {
+        Maincontainer owner = owner("");
+        var layout = new java.awt.CardLayout();
+        JPanel root = new JPanel(layout);
+        set(owner, "cardLayout", layout);
+        set(owner, "mainPanel", root);
+        Startpanel first = new Startpanel(owner);
+        set(owner, "startPanel", first);
+        root.add(first, "StartScreen");
+        List<JPanel> firstButtons = menuButtons(first, START_LABELS);
+        press(first, KeyEvent.VK_DOWN);
+        Startpanel second = new Startpanel(owner);
+        List<JPanel> secondButtons = menuButtons(second, START_LABELS);
+        press(first, KeyEvent.VK_DOWN);
+        assertSelection(firstButtons, 2);
+        assertSelection(secondButtons, 0);
+        press(first, KeyEvent.VK_ENTER);
+        require(((JPanel) get(owner, "scoreboardPanel")).getParent() == root, "첫 화면의 Enter가 첫 화면에서 선택한 SCORE를 실행해야 합니다.");
+    }
+
+    private static void settingMenuIsolation() throws Exception {
+        Maincontainer owner = owner("");
+        Settingpanel first = new Settingpanel(owner);
+        List<JPanel> firstButtons = menuButtons(first, SETTING_LABELS);
+        press(first, KeyEvent.VK_DOWN);
+        Maincontainer secondOwner = owner("");
+        Settingpanel second = new Settingpanel(secondOwner);
+        List<JPanel> secondButtons = menuButtons(second, SETTING_LABELS);
+        press(first, KeyEvent.VK_DOWN);
+        assertSelection(firstButtons, 2);
+        assertSelection(secondButtons, 0);
+        press(first, KeyEvent.VK_UP);
+        press(first, KeyEvent.VK_UP);
+        press(first, KeyEvent.VK_ENTER);
+        require(value(owner.setting, "windowSize").equals("750X625") && value(secondOwner.setting, "windowSize").equals("600X500"),
+            "첫 화면의 Enter가 다른 화면의 설정을 바꾸면 안 됩니다.");
+    }
+
+    private static void keyMenuIsolation() throws Exception {
+        Maincontainer owner = owner("");
+        Settingpanel first = new Settingpanel(owner);
+        first.setSize(500, 600);
+        press(first, KeyEvent.VK_DOWN);
+        press(first, KeyEvent.VK_ENTER);
+        JPanel firstKeys = keyPanel(first);
+        List<JPanel> firstButtons = menuButtons(firstKeys, KEY_LABELS);
+        press(firstKeys, KeyEvent.VK_DOWN);
+        press(firstKeys, KeyEvent.VK_DOWN);
+        Settingpanel second = new Settingpanel(owner);
+        second.setSize(500, 600);
+        press(second, KeyEvent.VK_DOWN);
+        press(second, KeyEvent.VK_ENTER);
+        JPanel secondKeys = keyPanel(second);
+        List<JPanel> secondButtons = menuButtons(secondKeys, KEY_LABELS);
+        press(firstKeys, KeyEvent.VK_DOWN);
+        assertSelection(firstButtons, 3);
+        assertSelection(secondButtons, 0);
+        press(firstKeys, KeyEvent.VK_ENTER);
+        press(firstKeys, KeyEvent.VK_B);
+        require(((Integer[]) get(firstKeys, "currentKey"))[3] == KeyEvent.VK_B
+                && ((Integer[]) get(secondKeys, "currentKey"))[3] == KeyEvent.VK_RIGHT,
+            "첫 키 변경 화면의 입력이 다른 키 변경 화면에 적용되면 안 됩니다.");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void menuCapacity() throws Exception {
+        Startpanel panel = new Startpanel(owner(""));
+        JPanel parent = (JPanel) menuButtons(panel, START_LABELS).get(0).getParent();
+        Class<?> type = Arrays.stream(Startpanel.class.getDeclaredClasses())
+            .filter(item -> item.getSimpleName().equals("Button")).findFirst().orElseThrow();
+        var constructor = type.getDeclaredConstructor(Startpanel.class, String.class);
+        constructor.setAccessible(true);
+        MenuButtons<JPanel> menu = (MenuButtons<JPanel>) get(panel, "menu");
+        JPanel rejected = null;
+        for (int index = 4; index < 12; index++) {
+            JPanel button = (JPanel) constructor.newInstance(panel, "EXTRA " + index);
+            menu.add(parent, button);
+            rejected = button;
+        }
+        require(parent.getComponentCount() == 11 && rejected.getParent() == null,
+            "기존 동작대로 11개를 등록하고 12번째부터 등록하지 않아야 합니다.");
+        List<JPanel> buttons = Arrays.stream(parent.getComponents()).map(JPanel.class::cast).toList();
+        assertSelection(buttons, 0);
+        press(panel, KeyEvent.VK_UP);
+        assertSelection(buttons, 10);
+        press(panel, KeyEvent.VK_DOWN);
+        assertSelection(buttons, 0);
     }
 
     private static void keyChange() throws Exception {
@@ -515,6 +703,60 @@ public final class RefactoringRegressionTest {
         int[][] cells = new int[block.height()][block.width()];
         for (int y = 0; y < block.height(); y++) for (int x = 0; x < block.width(); x++) cells[y][x] = block.getShape(x, y);
         return Arrays.deepToString(cells);
+    }
+
+    private static JPanel keyPanel(Settingpanel setting) {
+        return Arrays.stream(setting.getComponents())
+            .filter(item -> item.getClass().getSimpleName().equals("ChangeKeyPanel"))
+            .map(JPanel.class::cast).findFirst().orElseThrow();
+    }
+
+    private static List<JPanel> menuButtons(Container root, String... labels) {
+        List<JPanel> buttons = new ArrayList<>();
+        for (String label : labels) {
+            JPanel button = findMenuButton(root, label);
+            require(button != null, "메뉴 항목을 찾을 수 없습니다: " + label);
+            buttons.add(button);
+        }
+        return buttons;
+    }
+
+    private static JPanel findMenuButton(Container root, String label) {
+        for (var child : root.getComponents()) {
+            if (child instanceof JPanel panel) {
+                if (Arrays.stream(panel.getComponents()).anyMatch(item -> item instanceof JLabel text && label.equals(text.getText()))) return panel;
+                JPanel found = findMenuButton(panel, label);
+                if (found != null) return found;
+            }
+        }
+        return null;
+    }
+
+    private static boolean hasLabel(Container root, String label) {
+        for (var child : root.getComponents()) {
+            if (child instanceof JLabel text && label.equals(text.getText())) return true;
+            if (child instanceof Container container && hasLabel(container, label)) return true;
+        }
+        return false;
+    }
+
+    private static void assertSelection(List<JPanel> buttons, int selected) {
+        for (int index = 0; index < buttons.size(); index++) {
+            require(buttons.get(index).isOpaque() == (index == selected),
+                "선택 강조는 항목 " + selected + "에만 있어야 합니다(검사 항목 " + index + ").");
+        }
+    }
+
+    private static void checkNavigation(JPanel panel, List<JPanel> buttons) {
+        assertSelection(buttons, 0);
+        press(panel, KeyEvent.VK_UP);
+        assertSelection(buttons, buttons.size() - 1);
+        press(panel, KeyEvent.VK_DOWN);
+        assertSelection(buttons, 0);
+        for (int index = 1; index <= buttons.size(); index++) {
+            press(panel, KeyEvent.VK_DOWN);
+            assertSelection(buttons, index % buttons.size());
+        }
     }
 
     private static void press(JPanel target, int code) {
