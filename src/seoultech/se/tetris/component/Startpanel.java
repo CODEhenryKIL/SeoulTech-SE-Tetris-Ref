@@ -44,13 +44,20 @@ public class Startpanel extends JPanel{
         buttonPanel.setPreferredSize(new Dimension(200, 250)); // 컴포넌트 사이즈 지정
 
         // Button 4개 추가하기
-        Button startButton = new Button("START") {
+        Button startButton = new Button("CLASSIC") {
             @Override 
             protected void isPressed() {
-                Startpanel.this.maincontainer.exitStartEnterGame("Normal");
+                Startpanel.this.maincontainer.exitStartEnterGame("Classic");
             }
         };
         menu.add(buttonPanel, startButton);
+        Button itemButton = new Button("ITEM") {
+            @Override 
+            protected void isPressed() {
+                Startpanel.this.maincontainer.exitStartEnterGame("Item");
+            }
+        };
+        menu.add(buttonPanel, itemButton);
         Button menuButton = new Button("MENU") {
             @Override 
             protected void isPressed() {

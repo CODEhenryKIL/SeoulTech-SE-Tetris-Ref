@@ -100,8 +100,15 @@ public class Maincontainer extends JFrame{
 
     private void applySetting() {
         // windowSize
-        String[] h_w = setting.currentSettingMap.get("windowSize").getCurrentSetting().split("X");
+        String[] h_w = setting.getWindowSize().split("X");
         HEIGHT = Integer.parseInt(h_w[0]); WIDTH = Integer.parseInt(h_w[1]);
+        // key
+        Integer[] keys = setting.getKeyCodes();
+        ROTATE = keys[0]; DOWN = keys[1]; LEFT = keys[2]; RIGHT = keys[3]; PAUSE = keys[4]; HARD_DROP = keys[5];
+        // colorBlind
+        colorPalette = setting.getColorPalette();
+        // difficulty
+        difficulty = setting.getDifficulty();
 
         // container에 띄우기 위한 빈 panel
         mainPanel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -204,6 +211,15 @@ public class Maincontainer extends JFrame{
             return getColorPalette();
         }
 
+        protected String getDifficulty() {
+            return currentSettingMap.get("difficulty").getCurrentSetting();
+        }
+
+        protected String nextDifficulty() {
+            currentSettingMap.get("difficulty").changeSetting();
+            return getDifficulty();
+        }
+
         // 문자열에서 새 배열을 만들므로 화면의 편집이 저장된 값에 전파되지 않는다.
         protected Integer[] getKeyCodes() {
             return parseKeyCodes(currentSettingMap.get("keySetting").getCurrentSetting());
@@ -262,7 +278,7 @@ public class Maincontainer extends JFrame{
                 Integer[] keyCodes = parseKeyCodes(value);
                 for (int i = 0; i < keyCodes.length; i++) {
                     if (keyCodes[i] <= 0) return false;
-                    if (i == 4 && keyCodes[i] == KeyEvent.VK_ENTER) return false; //TODO? 엔터키를 하드드롭에도 금지시켜야하나요?
+                    if (i == 4 && keyCodes[i] == KeyEvent.VK_ENTER) return false;
                     for (int j = 0; j < i; j++) {
                         if (keyCodes[i].equals(keyCodes[j])) return false;
                     }

@@ -4,11 +4,6 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
@@ -47,7 +42,7 @@ public class Gamepanel extends JPanel{
         this.maincontainer = maincontainer;
         this.gameMode = gameMode;
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
-        difficulty = maincontainer.setting.currentSettingMap.get("difficulty").getCurrentSetting();
+        difficulty = maincontainer.setting.getDifficulty();
 
         board = new Board(this);
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);
@@ -155,7 +150,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        ScoreStore.append(this.userName, this.score);
+        ScoreStore.append(this.userName, this.score, this.difficulty);
     }
 
     protected void gamePause() {
@@ -209,6 +204,10 @@ public class Gamepanel extends JPanel{
         remove(pausepanel);
         revalidate();
         repaint();
+    }
+
+    protected Block getNextBlock() {
+        return board.getNextBlock();
     }
 
     public class PlayerKeyListener implements KeyListener {

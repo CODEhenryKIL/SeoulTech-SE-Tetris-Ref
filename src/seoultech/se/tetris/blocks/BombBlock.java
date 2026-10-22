@@ -6,11 +6,13 @@ public class BombBlock extends ItemBlock {
 	
 	public BombBlock() {
 		shape = new int[][] { 
+			{0, 1, 0},
 			{1, 1, 1},
 			{1, 1, 1},
 			{1, 1, 1}
 		};
 		text = new String[][] {
+			{" ", "O", " "},
 			{"O", "O", "O"},
 			{"O", "B", "O"},
 			{"O", "O", "O"}

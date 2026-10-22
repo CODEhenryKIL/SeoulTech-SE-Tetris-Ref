@@ -92,6 +92,13 @@ public class Settingpanel extends JPanel{
                 }
             };
             menu.add(settingPanel, colorBlindOption);
+            // 난이도를 변경한다.
+            difficultyOption = new OptionButton("Difficulty: ", maincontainer.setting.getDifficulty()) {
+                @Override 
+                protected void isPressed() {
+                    option.setText(maincontainer.setting.nextDifficulty());
+                }
+            };
             // 모든 설정을 기본값으로 되돌린다.
             resetSettingOption = new OptionButton("Reset setting", null) {
                 @Override 
@@ -99,7 +106,7 @@ public class Settingpanel extends JPanel{
                     maincontainer.setting.clearSetting();
                     windowSizeOption.option.setText(maincontainer.setting.getWindowSize());
                     colorBlindOption.option.setText(maincontainer.setting.getColorPalette());
-                    difficultyOption.option.setText(maincontainer.setting.currentSettingMap.get("difficulty").getCurrentSetting());
+                    difficultyOption.option.setText(maincontainer.setting.getDifficulty());
                     Settingpanel.this.revalidate();
                     Settingpanel.this.repaint();
                 }

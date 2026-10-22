@@ -15,9 +15,6 @@ import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Random;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
 
 import javax.swing.BorderFactory;
@@ -25,19 +22,8 @@ import javax.swing.JComponent;
 import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
-import seoultech.se.tetris.blocks.AnchorBlock;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockGenerator;
-import seoultech.se.tetris.blocks.BombBlock;
-import seoultech.se.tetris.blocks.ColumnBlock;
-import seoultech.se.tetris.blocks.IBlock;
-import seoultech.se.tetris.blocks.JBlock;
-import seoultech.se.tetris.blocks.LBlock;
-import seoultech.se.tetris.blocks.OBlock;
-import seoultech.se.tetris.blocks.RowBlock;
-import seoultech.se.tetris.blocks.SBlock;
-import seoultech.se.tetris.blocks.TBlock;
-import seoultech.se.tetris.blocks.ZBlock;
 import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
@@ -60,14 +46,8 @@ public class Board extends JComponent {
 	private Block next;
 	private int erasedLineNum = 0;
 	private int level = 1;
-	private Block[] blockList = {new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock()};
-	private Block[] itemList = {new AnchorBlock(), new BombBlock(), new RowBlock(), new ColumnBlock()};
-	private static final LinkedHashMap<String, int[]> rouletteWheelSelection = new LinkedHashMap<>(Map.of(
-		"Easy", 	new int[]{72, 12, 10, 10, 10, 10, 10, 10}, // 첫 번째 숫자는 모든 숫자의 합
-		"Normal", 	new int[]{70, 10, 10, 10, 10, 10, 10, 10},
-		"Hard", 	new int[]{68, 8, 10, 10, 10, 10, 10, 10},
-		"Item", 	new int[]{40, 10, 10, 10, 10}
-	));
+	private String difficulty;
+
 	int x = 3; //Default Position.
 	int y = 0;
 	
@@ -82,6 +62,7 @@ public class Board extends JComponent {
 		setBorder(border);
 		
 		this.gamepanel = gamepanel;
+		this.difficulty = gamepanel.difficulty;
 		//Set timer for block drops.
 		timer = new Timer(initInterval, new ActionListener() {			
 			@Override
@@ -97,8 +78,8 @@ public class Board extends JComponent {
 	}
 
 	protected void boardStart() {
-		curr = blockGenerator.nextBlock();
-		next = blockGenerator.nextBlock();
+		curr = blockGenerator.nextBlock(difficulty);
+		next = blockGenerator.nextBlock(difficulty);
 		this.gamepanel.drawNextBoard(next);
 		StringBuffer sb = new StringBuffer();
 		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR); // 윗쪽 보더
@@ -126,38 +107,6 @@ public class Board extends JComponent {
 			gamepanel.gamePause();
 			isPaused = true;
 		}
-	}
-
-	private Block getRandomBlock() {
-		int[] rouletteList = rouletteWheelSelection.get(gamepanel.difficulty);
-		int sum = rouletteList[0];
-		int block = random.nextInt(sum); block++;
-		for (int i = 1; i < rouletteList.length; i++) {
-			int num = rouletteList[i];
-			if (num >= block) {
-				try {
-					return blockList[i-1].createNew();
-				} catch (Exception e) {e.printStackTrace();}
-			} 
-			else {block -= num;}
-		}
-		return null;
-	}
-
-	private Block getRandomItemBlock() {
-		int[] itemRouletteList = rouletteWheelSelection.get("Item");
-		int itemSum = itemRouletteList[0];
-		int block = random.nextInt(itemSum); block++;
-		for (int i = 1; i < itemRouletteList.length; i++) {
-			int num = itemRouletteList[i];
-			if (num >= block) {
-				try {
-					return itemList[i-1].createNew();
-				} catch (Exception e) {e.printStackTrace();}
-			} 
-			else {block -= num;}
-		}
-		return null;
 	}
 
 	private void placeBlock() {
@@ -245,13 +194,12 @@ public class Board extends JComponent {
 
 	private boolean lockAndAdvanceBlock() {
 		placeBlock();
-		eraseLine();
+		eraseFullLine();
 
 		if (isgameover()) return false;
 		curr = next;
-				if (islevelUp() && gamepanel.gameMode.equals("Item")) {next = getRandomItemBlock();} 
-		else {next = getRandomItemBlock();} // TODO
-		next = blockGenerator.nextBlock();
+		if (islevelUp() && gamepanel.gameMode.equals("Item")) {next = blockGenerator.nextItemBlock();} 
+		else {next = blockGenerator.nextItemBlock();} // TODO: 완성되면 nextBlock(difficulty)로 바꾸기
 		this.gamepanel.drawNextBoard(next);
 
 		x = 3;
