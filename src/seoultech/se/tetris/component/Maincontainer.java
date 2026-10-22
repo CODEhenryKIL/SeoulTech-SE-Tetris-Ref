@@ -63,13 +63,8 @@ public class Maincontainer extends JFrame{
         gamePanel.requestFocusInWindow();
     }
     protected void exitGameEnterStart() {
-        startPanel = new Startpanel(this);
-        mainPanel.add(startPanel, "StartScreen");
         if (gamePanel != null && gamePanel.getParent() != null) mainPanel.remove(gamePanel);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
     // Setting 버튼 상호작용 함수
     protected void exitStartEnterSetting() {
@@ -82,16 +77,10 @@ public class Maincontainer extends JFrame{
         settingPanel.requestFocusInWindow();
     }
     protected void exitSettingEnterStart() {
-        startPanel = new Startpanel(this);
         mainPanel.remove(settingPanel);
-        remove(mainPanel); // GC 발생
+        remove(mainPanel);
         applySetting();
-        mainPanel.add(startPanel, "StartScreen");
-        mainPanel.setComponentZOrder(startPanel, 0);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        //cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
     // Scoreboard 버튼 상호작용 함수
     protected void exitStartEnterScoreboard() {
@@ -104,13 +93,8 @@ public class Maincontainer extends JFrame{
         scoreboardPanel.requestFocusInWindow();
     }
     protected void exitScoreboardEnterStart() {
-        startPanel = new Startpanel(this);
-        mainPanel.add(startPanel, "StartScreen");
         mainPanel.remove(scoreboardPanel);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
 
     private void applySetting() {

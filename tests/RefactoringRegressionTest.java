@@ -54,6 +54,7 @@ public final class RefactoringRegressionTest {
 
     private static final List<Check> CHECKS = List.of(
         new Check("frame-size", "실제 창 크기와 게임 설정 크기의 독립성", RefactoringRegressionTest::frameSize),
+        new Check("start-return", "게임·점수판 왕복 시 이전 패널 제거와 시작 메뉴 초기화", RefactoringRegressionTest::startReturn),
         new Check("key-change", "중복 키 거부 → 키 변경 → 저장·재로드", RefactoringRegressionTest::keyChange),
         new Check("reset-settings", "사용자 설정을 기본값으로 복원·저장", RefactoringRegressionTest::resetSettings),
         new Check("unknown-setting", "모르는 설정을 무시하고 정상 설정 유지", RefactoringRegressionTest::unknownSetting),
@@ -161,6 +162,36 @@ public final class RefactoringRegressionTest {
             require(owner.getHeight() == size[1] + 28, "창 높이는 제목 표시줄을 포함한 실제 크기여야 합니다.");
             require(new Startpanel(owner).getPreferredSize().equals(new java.awt.Dimension(size[0], size[1])),
                 "게임 화면의 설정 크기에 창 테두리·제목 표시줄 크기가 섞이면 안 됩니다.");
+        }
+    }
+
+    private static void startReturn() throws Exception {
+        Maincontainer owner = owner("");
+        var layout = new java.awt.CardLayout();
+        JPanel root = new JPanel(layout);
+        set(owner, "cardLayout", layout);
+        set(owner, "mainPanel", root);
+        owner.enterStart();
+        for (int i = 0; i < 3; i++) {
+            Startpanel previous = (Startpanel) get(owner, "startPanel");
+            press(previous, KeyEvent.VK_DOWN); // 복귀 시 이전 MENU 선택이 남으면 안 된다.
+            owner.exitStartEnterScoreboard();
+            JPanel scores = (JPanel) get(owner, "scoreboardPanel");
+            owner.exitScoreboardEnterStart();
+            require(root.getComponentCount() == 1 && scores.getParent() == null,
+                "점수판 복귀 후 이전 패널이 남으면 안 됩니다.");
+            require(get(owner, "startPanel") != previous, "시작 화면은 현재 정책대로 다시 생성해야 합니다.");
+
+            Startpanel start = (Startpanel) get(owner, "startPanel");
+            press(start, KeyEvent.VK_ENTER); // 새 메뉴의 기본 선택 START가 실제 게임을 열어야 한다.
+            Gamepanel game = (Gamepanel) get(owner, "gamePanel");
+            require(game != null && game.getParent() == root, "복귀한 메뉴의 START 입력으로 게임에 진입해야 합니다.");
+            Board board = (Board) get(game, "board");
+            board.timer.stop();
+            owner.exitGameEnterStart();
+            require(root.getComponentCount() == 1 && game.getParent() == null,
+                "게임 복귀 후 이전 패널이 남으면 안 됩니다.");
+            require(((JPanel) get(owner, "startPanel")).isVisible(), "복귀한 시작 화면이 표시돼야 합니다.");
         }
     }
 
