@@ -1213,7 +1213,7 @@ public final class RefactoringRegressionTest {
 
     private static void scoreSave() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
-            set(fixture.game, "usrname", "TESTPLAYER");
+            set(fixture.game, "userName", "TESTPLAYER");
             fixture.board.addScore(321);
             call(fixture.game, "saveScore");
             require(Files.readString(Path.of("tetris_score.txt")).contains("TESTPLAYER:321"), "게임에서 점수를 저장해야 합니다.");
@@ -1240,7 +1240,7 @@ public final class RefactoringRegressionTest {
     }
 
     private static void saveViaGame(Gamepanel game, String name, int score) throws Exception {
-        set(game, "usrname", name);
+        set(game, "userName", name);
         set(game, "score", score);
         call(game, "saveScore");
     }

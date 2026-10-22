@@ -25,10 +25,10 @@ public class Maincontainer extends JFrame{
     protected static int RIGHT = 39;
     protected static int PAUSE = 80;
     protected static int HARD_DROP = 32;
-    protected static String colorPalette = "Normal"; // 0: 일반 색상, 1: 적색약, 2: 녹색약, 3:청황색약
+    protected static String colorPalette = "Normal"; // Normal, Protanopia, Deuteranopia, Tritanopia 중 선택한 색상 모드
     protected Setting setting;
-    private JPanel mainPanel; // container에 띄울 panel로 background color가 black인 아무것도 없는 panel입니다.
-    private CardLayout cardLayout; // 추후 mainPanel에 추가될 panel끼리 전환하기 위한 기반입니다. 현재는 코드에 큰 영향이 없습니다.
+    private JPanel mainPanel; // 시작·게임·설정·점수판 화면을 담는 루트 패널
+    private CardLayout cardLayout; // mainPanel에 등록한 화면 사이의 전환을 담당한다.
     private Startpanel startPanel; // 시작 시 보여질 화면 panel입니다.
     private Gamepanel gamePanel; // 게임 화면 panel입니다.
     private Settingpanel settingPanel;
@@ -44,7 +44,7 @@ public class Maincontainer extends JFrame{
         applySetting();
     }
 
-    public void enterStart() { // 게임이 시작됨을 알리는 메소드
+    public void enterStart() { // 시작 메뉴를 표시한다.
         startPanel = new Startpanel(this); // Startpanel 객체 생성 및 container 객체 넘겨주기
         mainPanel.add(startPanel, "StartScreen"); // mainPanel에 startPanel 추가
         mainPanel.revalidate(); // 변경사항을 재계산
@@ -56,7 +56,7 @@ public class Maincontainer extends JFrame{
     protected void exitStartEnterGame() { // 시작화면에서 시작 버튼을 눌러 게임화면으로 들어감을 알리는 메소드
         gamePanel = new Gamepanel(this); // Gamepanel 객체 생성 및 container 객체 넘겨주기
         mainPanel.add(gamePanel, "GameScreen"); // mainPanel에 gamePanel 추가
-        mainPanel.remove(startPanel); // 게임 시작 시에는 시작 화면이 불필요하므로, startPanel 제거하여 memory leaking 방지하기
+        mainPanel.remove(startPanel); // 게임 화면으로 전환하면서 시작 화면을 루트 패널에서 제거한다.
         mainPanel.revalidate(); // 변경사항을 재계산
         mainPanel.repaint(); // 변경사항 화면에 다시 그리기
         cardLayout.show(mainPanel, "GameScreen");
@@ -98,13 +98,13 @@ public class Maincontainer extends JFrame{
     }
 
     private void applySetting() {
-        String[] h_w = setting.getWindowSize().split("X");
-        HEIGHT = Integer.parseInt(h_w[0]); WIDTH = Integer.parseInt(h_w[1]);
+        String[] windowDimensions = setting.getWindowSize().split("X");
+        HEIGHT = Integer.parseInt(windowDimensions[0]); WIDTH = Integer.parseInt(windowDimensions[1]);
         Integer[] keys = setting.getKeyCodes();
         ROTATE = keys[0]; DOWN = keys[1]; LEFT = keys[2]; RIGHT = keys[3]; PAUSE = keys[4]; HARD_DROP = keys[5];
         colorPalette = setting.getColorPalette();
         
-        // container에 띄우기 위한 빈 panel
+        // 기존 루트 패널에 설정 크기와 배경을 적용한다.
         mainPanel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         mainPanel.setBackground(Color.BLACK);
         mainPanel.setOpaque(true);
@@ -175,6 +175,7 @@ public class Maincontainer extends JFrame{
         private static final LinkedHashMap<String, ArrayList<String>> validSettingMap = new LinkedHashMap<>(Map.of(
             "windowSize", new ArrayList<>(List.of("600X500","750X625","900X750")),
             "keySetting", new ArrayList<>(List.of("ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32")),
+            // 기존 설정 파일의 저장 항목을 유지한다. 점수 초기화는 ScoreStore.clear()가 수행한다.
             "resetScore", new ArrayList<>(List.of("false")),
             "colorBlind", new ArrayList<>(List.of("Normal","Protanopia","Deuteranopia","Tritanopia"))
         ));

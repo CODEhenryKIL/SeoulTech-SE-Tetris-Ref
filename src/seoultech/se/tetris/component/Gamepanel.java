@@ -24,7 +24,7 @@ public class Gamepanel extends JPanel{
     private SimpleAttributeSet styleSetScore2;
     private Maincontainer maincontainer;
     private int score;
-    private String usrname = "PLAYER";
+    private String userName = "PLAYER";
     private StringBuffer userNameBuffer;
     private JLabel setUserNameText;
     private JPanel pausepanel;
@@ -145,7 +145,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        ScoreStore.append(this.usrname, this.score);
+        ScoreStore.append(this.userName, this.score);
     }
 
     protected void gamePause() {
@@ -260,7 +260,7 @@ public class Gamepanel extends JPanel{
         public void keyPressed(KeyEvent e) {
             char c = e.getKeyChar();
             int i = e.getKeyCode();
-            if (((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) && userNameBuffer.length() < 10) { // A~Z = 65~90, 1~9 = 48~57
+            if (((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')) && userNameBuffer.length() < 10) { // 영문 대소문자와 숫자 0~9를 최대 10자까지 입력한다.
                 userNameBuffer.append(c);
                 setUserNameText.setText(userNameBuffer.toString());
                 setUserNameText.setForeground(changeColor(Color.WHITE));
@@ -272,7 +272,7 @@ public class Gamepanel extends JPanel{
                     setUserNameText.setText("PLAYER");
                 }
             } else if (i == KeyEvent.VK_ENTER) {
-                usrname = setUserNameText.getText();
+                userName = setUserNameText.getText();
                 removeKeyListener(this);
                 saveScore();
                 maincontainer.exitGameEnterStart();

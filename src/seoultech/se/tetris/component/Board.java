@@ -55,7 +55,6 @@ public class Board extends JComponent {
 				BorderFactory.createLineBorder(changeColor(Color.DARK_GRAY), 5));
 		setBorder(border);
 		
-		//Document default style.
 		this.gamepanel = gamepanel;
 		//Set timer for block drops.
 		timer = new Timer(initInterval, new ActionListener() {			
