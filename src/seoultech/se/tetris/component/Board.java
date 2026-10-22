@@ -12,7 +12,6 @@ import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
 
 import javax.swing.BorderFactory;
@@ -21,13 +20,7 @@ import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
 import seoultech.se.tetris.blocks.Block;
-import seoultech.se.tetris.blocks.IBlock;
-import seoultech.se.tetris.blocks.JBlock;
-import seoultech.se.tetris.blocks.LBlock;
-import seoultech.se.tetris.blocks.OBlock;
-import seoultech.se.tetris.blocks.SBlock;
-import seoultech.se.tetris.blocks.TBlock;
-import seoultech.se.tetris.blocks.ZBlock;
+import seoultech.se.tetris.blocks.BlockGenerator;
 
 public class Board extends JComponent {
 	private static final long serialVersionUID = 2434035659171694595L;
@@ -41,7 +34,7 @@ public class Board extends JComponent {
 	private int[][] board;
 	private ArrayList<TextChunk> textChunks;
 	protected Timer timer;
-	private final Random random = new Random();
+	private final BlockGenerator blockGenerator = new BlockGenerator();
 	private Block curr;
 	private boolean isPaused = false;
 	private int score = 0;
@@ -78,8 +71,8 @@ public class Board extends JComponent {
 	}
 
 	protected void boardStart() {
-		curr = getRandomBlock();
-		next = getRandomBlock();
+		curr = blockGenerator.nextBlock();
+		next = blockGenerator.nextBlock();
 		this.gamepanel.drawNextBoard();
 		StringBuffer sb = new StringBuffer();
 		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR); // 윗쪽 보더
@@ -109,27 +102,6 @@ public class Board extends JComponent {
 		}
 	}
 
-	private Block getRandomBlock() {
-		int block = random.nextInt(7);
-		switch(block) {
-		case 0:
-			return new IBlock();
-		case 1:
-			return new JBlock();
-		case 2:
-			return new LBlock();
-		case 3:
-			return new ZBlock();
-		case 4:
-			return new SBlock();
-		case 5:
-			return new TBlock();
-		case 6:
-			return new OBlock();			
-		}
-		return new LBlock();
-	}
-	
 	private void placeBlock() {
 		int dy = y; int dx = x;
 		while(canDown(dx, dy)) dy++;
@@ -259,7 +231,7 @@ public class Board extends JComponent {
 
 		if (isgameover()) return false;
 		curr = next;
-		next = getRandomBlock();
+		next = blockGenerator.nextBlock();
 		this.gamepanel.drawNextBoard();
 
 		x = 3;

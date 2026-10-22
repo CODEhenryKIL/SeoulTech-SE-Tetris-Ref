@@ -80,6 +80,7 @@ public final class RefactoringRegressionTest {
         new Check("block-initialization", "7종 블록의 초기 모양 전체·색상", RefactoringRegressionTest::blockInitialization),
         new Check("block-rotation", "7종 블록의 칸 수·색·시계 방향 회전", RefactoringRegressionTest::blockRotation),
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
+        new Check("block-generation-lifecycle", "시작의 두 블록 생성·난수 소비와 게임판 간 생성 독립성", RefactoringRegressionTest::blockGenerationLifecycle),
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
         new Check("blocked-rotation", "막힌 회전의 좌표·모양 유지", RefactoringRegressionTest::blockedRotation),
         new Check("hard-drop", "하드드롭 위치·점수·다음 블록 승계", RefactoringRegressionTest::hardDrop),
@@ -602,20 +603,92 @@ public final class RefactoringRegressionTest {
 
     private static void blockGeneration() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
-            Random random = (Random) get(fixture.board, "random");
+            Random random = generationRandom(fixture.board);
             List<String> first = generatedTypes(fixture.board, random, 12345L);
             List<String> second = generatedTypes(fixture.board, random, 12345L);
             require(first.equals(second), "같은 시드에서 생성 순서가 재현되어야 합니다.");
             require(new HashSet<>(first).equals(Set.of("IBlock", "JBlock", "LBlock", "OBlock", "SBlock", "TBlock", "ZBlock")),
                 "실제 생성기가 일곱 종류를 생성해야 합니다.");
+            for (long seed : new long[] {0, -1, Long.MAX_VALUE}) generatedTypes(fixture.board, random, seed);
         }
     }
 
     private static List<String> generatedTypes(Board board, Random random, long seed) throws Exception {
         random.setSeed(seed);
+        Random expected = new Random(seed);
+        List<Block> prototypes = List.of(new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock());
+        Set<Block> instances = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<String> result = new ArrayList<>();
-        for (int i = 0; i < 210; i++) result.add(call(board, "getRandomBlock").getClass().getSimpleName());
+        for (int i = 0; i < 210; i++) {
+            Block block = generateBlock(board);
+            Block prototype = prototypes.get(expected.nextInt(7));
+            require(block.getClass() == prototype.getClass(), "난수 0~6과 블록 종류의 기존 대응을 유지해야 합니다.");
+            require(instances.add(block), "같은 종류여도 매번 새 블록 인스턴스를 생성해야 합니다.");
+            require(shape(block).equals(shape(prototype)) && block.getColor().equals(prototype.getColor()),
+                "이전 블록의 회전 상태를 공유하지 않고 기본 모양·색으로 생성해야 합니다.");
+            result.add(block.getClass().getSimpleName());
+            block.rotate();
+        }
+        require(random.nextLong() == expected.nextLong(), "블록 하나마다 기존 nextInt(7)을 정확히 한 번만 소비해야 합니다.");
         return result; // 통계적 분포/2차 난이도 가중치 테스트가 아니라 재현 가능한 생성 경로 검사.
+    }
+
+    private static Random generationRandom(Board board) throws Exception {
+        return (Random) get(get(board, "blockGenerator"), "random");
+    }
+
+    private static Block generateBlock(Board board) throws Exception {
+        return ((BlockGenerator) get(board, "blockGenerator")).nextBlock();
+    }
+
+    private static void blockGenerationLifecycle() throws Exception {
+        try (GameFixture first = new GameFixture(); GameFixture second = new GameFixture()) {
+            Board a = new Board(first.game), b = new Board(second.game);
+            try {
+                set(first.game, "board", a);
+                set(second.game, "board", b);
+                Random randomA = generationRandom(a), randomB = generationRandom(b);
+                require(randomA != randomB, "게임판마다 독립된 난수 상태를 소유해야 합니다.");
+                randomA.setSeed(12345);
+                randomB.setSeed(12345);
+                Random expected = new Random(12345);
+                List<String> types = List.of("IBlock", "JBlock", "LBlock", "ZBlock", "SBlock", "TBlock", "OBlock");
+                String currentType = types.get(expected.nextInt(7)), nextType = types.get(expected.nextInt(7));
+                a.boardStart();
+                b.boardStart();
+                a.timer.stop();
+                b.timer.stop();
+                for (Board board : new Board[] {a, b}) {
+                    require(get(board, "curr").getClass().getSimpleName().equals(currentType)
+                            && board.getNextBlock().getClass().getSimpleName().equals(nextType),
+                        "시작은 생성기의 첫 두 결과를 curr·next 순서로 사용해야 합니다.");
+                    require(get(board, "curr") != board.getNextBlock() && board.x == 3 && board.y == 0,
+                        "시작의 curr·next는 별개 객체이고 시작 좌표를 유지해야 합니다.");
+                }
+                long expectedState = expected.nextLong();
+                require(randomA.nextLong() == expectedState && randomB.nextLong() == expectedState,
+                    "게임 시작에서 난수를 정확히 두 번 소비해야 합니다.");
+                randomA.setSeed(205);
+                randomB.setSeed(205);
+                Block previewA = a.getNextBlock(), previewB = b.getNextBlock();
+                String nextAfterLock = types.get(new Random(205).nextInt(7));
+                a.hardDrop();
+                for (int i = 0; i < 20; i++) generateBlock(a);
+                b.hardDrop();
+                require(get(a, "curr") == previewA && get(b, "curr") == previewB,
+                    "다음 블록을 복제하지 않고 미리보기 객체 그대로 승계해야 합니다.");
+                require(a.getNextBlock().getClass().getSimpleName().equals(nextAfterLock)
+                        && b.getNextBlock().getClass().getSimpleName().equals(nextAfterLock),
+                    "한 게임판의 추가 생성이 다른 게임판의 생성 순서에 영향을 주면 안 됩니다.");
+                require(a.getNextBlock() != previewA && b.getNextBlock() != previewB,
+                    "승계 후 미리보기는 새 인스턴스여야 합니다.");
+                assertPreview(first.game, a.getNextBlock());
+                assertPreview(second.game, b.getNextBlock());
+            } finally {
+                if (a.timer != null) a.timer.stop();
+                if (b.timer != null) b.timer.stop();
+            }
+        }
     }
 
     private static void collision() throws Exception {
@@ -713,7 +786,7 @@ public final class RefactoringRegressionTest {
                         call(board, "placeBlock");
                     }
                     Block next = board.getNextBlock();
-                    Random random = (Random) get(board, "random");
+                    Random random = generationRandom(board);
                     random.setSeed(205);
                     Random expected = new Random(205);
                     String expectedNext = List.of("IBlock", "JBlock", "LBlock", "ZBlock", "SBlock", "TBlock", "OBlock").get(expected.nextInt(7));
@@ -771,7 +844,7 @@ public final class RefactoringRegressionTest {
                 fixedCell(board, 3, 0);
                 fixture.game.drawNextBoard();
                 Object preview = get(get(fixture.game, "nextblockpanel"), "textChunks");
-                Random random = (Random) get(board, "random");
+                Random random = generationRandom(board);
                 random.setSeed(205);
                 fixture.initialTimer.start();
                 drop(fixture, input, false);
