@@ -7,12 +7,8 @@ import java.awt.*;
 import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.Arrays;
+import seoultech.se.tetris.score.ScoreStore;
 
 public class Settingpanel extends JPanel{
     /*
@@ -87,12 +83,7 @@ public class Settingpanel extends JPanel{
             resetScoreOption = new OptionButton("Reset Scoreboard", null) {
                 @Override
                 protected void isPressed() {
-                    Path path = Paths.get("tetris_score.txt");
-                    try {
-                        Files.write(path, new ArrayList<String>());
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+                    ScoreStore.clear();
                 }
             };
             menu.add(settingPanel, resetScoreOption);

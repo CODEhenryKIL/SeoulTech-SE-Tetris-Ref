@@ -10,18 +10,11 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.ArrayList;
 import java.util.List;
+import seoultech.se.tetris.score.ScoreStore;
 
 public class Scoreboardpanel extends JPanel{
-    private Path path;
-    private int totalusernum;
     private Maincontainer maincontainer;
-    private ArrayList<GameScore> loadedScores;
     private JTextPane scorepanel;
     private PlayerKeyListener playerKeyListener;
     private int HEIGHT;
@@ -69,49 +62,13 @@ public class Scoreboardpanel extends JPanel{
 		requestFocus();
     }
 
-    protected class GameScore implements Comparable<GameScore> {
-        String username;
-        int score;
-
-        public GameScore(String username, int score) {
-            this.username = username;
-            this.score = score;
-        }
-
-        @Override
-        public int compareTo(GameScore other) {
-            return Integer.compare(other.score, this.score);
-        }
-    }
-
     public void drawScore() {
-        path = Paths.get("tetris_score.txt");
-        loadedScores = new ArrayList<GameScore>();
-        if (Files.exists(path)) {
-            try {
-                List<String> lines = Files.readAllLines(path);
-                for (String line : lines) {
-                    if (line.trim().isEmpty()) continue;
-                    String[] tokens = line.split(":");
-                    if (tokens.length == 2) {
-                        try {
-                            GameScore gamescore = new GameScore(tokens[0].trim(), Integer.parseInt(tokens[1].trim()));
-                            loadedScores.add(gamescore);
-                        } catch (NumberFormatException e) {
-                            e.printStackTrace();
-                        }
-                    }
-                }
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-        loadedScores.sort(null);
-        totalusernum = loadedScores.size();
+        List<ScoreStore.Score> loadedScores = ScoreStore.readRanked();
+        int totalusernum = loadedScores.size();
         StringBuffer sb = new StringBuffer();
         int counter = 1;
         for (int j = 0; j < Math.min(totalusernum, 10); j++) {
-            sb.append(counter + ".\t" + loadedScores.get(j).username + ": " + loadedScores.get(j).score + "\n");
+            sb.append(counter + ".\t" + loadedScores.get(j).username() + ": " + loadedScores.get(j).score() + "\n");
             counter++;
         }
         for (int k = 0; k < 10 - Math.min(totalusernum, 10); k++) {

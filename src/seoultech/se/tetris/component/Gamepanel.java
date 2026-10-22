@@ -4,12 +4,6 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.nio.file.StandardOpenOption;
-import java.util.Arrays;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -19,6 +13,7 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import seoultech.se.tetris.blocks.Block;
+import seoultech.se.tetris.score.ScoreStore;
 
 public class Gamepanel extends JPanel{
     private Board board;
@@ -32,7 +27,6 @@ public class Gamepanel extends JPanel{
     private String usrname = "PLAYER";
     private StringBuffer userNameBuffer;
     private JLabel setUserNameText;
-    private Path path;
     private JPanel pausepanel;
     private JPanel gameOverPanel;
     private int HEIGHT;
@@ -151,14 +145,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        path = Paths.get("tetris_score.txt");
-        String str = this.usrname + ":" + this.score;
-        try {
-            Files.write(path, Arrays.asList(str), 
-                StandardOpenOption.CREATE, StandardOpenOption.APPEND); // 파일이 없으면 새로 만들고(CREATE), 있으면 맨 뒤에 이어 붙임(APPEND)
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        ScoreStore.append(this.usrname, this.score);
     }
 
     protected void gamePause() {

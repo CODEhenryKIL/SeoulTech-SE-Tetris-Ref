@@ -25,6 +25,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import seoultech.se.tetris.blocks.*;
 import seoultech.se.tetris.rules.CollisionRules;
+import seoultech.se.tetris.score.ScoreStore;
 import sun.misc.Unsafe;
 
 /**
@@ -99,6 +100,12 @@ public final class RefactoringRegressionTest {
         new Check("pause-resume", "일시정지 중 입력 차단·타이머 재개", RefactoringRegressionTest::pauseResume),
         new Check("game-over", "생성 위치가 막히면 타이머 종료·중첩 방지", RefactoringRegressionTest::gameOver),
         new Check("score-save", "점수 저장 후 점수판에서 다시 읽기", RefactoringRegressionTest::scoreSave),
+        new Check("score-append-bytes", "점수 추가 저장의 UTF-8·줄바꿈·기존 무개행 바이트 유지", RefactoringRegressionTest::scoreAppendBytes),
+        new Check("score-file-boundaries", "누락·빈 파일·공백 기록 조회와 누락 파일 초기화", RefactoringRegressionTest::scoreFileBoundaries),
+        new Check("score-parse-boundaries", "기존 점수 파싱·정수 경계·동점 순서·손상 뒤 정상 기록", RefactoringRegressionTest::scoreParseBoundaries),
+        new Check("score-refresh", "기존 점수판의 저장·초기화·재저장 후 최신 기록 조회", RefactoringRegressionTest::scoreRefresh),
+        new Check("score-io-diagnostics", "읽기·저장·초기화 실패의 진단과 원본 보존", RefactoringRegressionTest::scoreIoDiagnostics),
+        new Check("score-store-direct", "화면 없는 점수 저장·전체 정렬·목록 독립성과 초기화", RefactoringRegressionTest::scoreStoreDirect),
         new Check("score-ranking", "손상된 기록 무시·내림차순·상위 10개", RefactoringRegressionTest::scoreRanking),
         new Check("score-reset", "설정 메뉴의 기록 초기화·다시 읽기", RefactoringRegressionTest::scoreReset)
     );
@@ -1138,6 +1145,143 @@ public final class RefactoringRegressionTest {
         }
         panel.drawScore();
         require(scoreText(panel).equals(text), "손상된 기록이 있어도 재조회 결과가 같아야 합니다.");
+    }
+
+    private static void saveViaGame(Gamepanel game, String name, int score) throws Exception {
+        set(game, "usrname", name);
+        set(game, "score", score);
+        call(game, "saveScore");
+    }
+
+    private static String rankingRows(String... entries) {
+        StringBuilder expected = new StringBuilder();
+        for (int i = 0; i < 10; i++) expected.append(i + 1).append(".\t")
+            .append(i < entries.length ? entries[i] : "###: 0").append('\n');
+        return expected.toString();
+    }
+
+    private static void resetViaMenu(Maincontainer owner) throws Exception {
+        Settingpanel panel = new Settingpanel(owner);
+        call(panel, "selectDown");
+        call(panel, "selectDown");
+        call(panel, "selectEnter");
+    }
+
+    private static String captureErrors(CheckedRunnable action) throws Exception {
+        java.io.PrintStream previous = System.err;
+        var bytes = new java.io.ByteArrayOutputStream();
+        try (var capture = new java.io.PrintStream(bytes, true, java.nio.charset.StandardCharsets.UTF_8)) {
+            System.setErr(capture);
+            try { action.run(); } finally { System.setErr(previous); }
+        }
+        return bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static void scoreAppendBytes() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        String newline = System.lineSeparator();
+        try (GameFixture fixture = new GameFixture()) {
+            saveViaGame(fixture.game, "한글", Integer.MIN_VALUE);
+            saveViaGame(fixture.game, "B", Integer.MAX_VALUE);
+            require(Files.readString(file).equals("한글:-2147483648" + newline + "B:2147483647" + newline),
+                "추가 저장은 기존 UTF-8·이름:점수·플랫폼 줄바꿈을 유지해야 합니다.");
+            Files.writeString(file, "Legacy:1");
+            saveViaGame(fixture.game, "Next", 2);
+            require(Files.readString(file).equals("Legacy:1Next:2" + newline),
+                "기존 무개행 파일에도 기존 APPEND처럼 앞 구분자를 추가하지 않아야 합니다.");
+            saveViaGame(fixture.game, "Fresh", 3);
+            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3")),
+                "잘못 이어진 행 뒤의 정상 추가 기록은 읽을 수 있어야 합니다.");
+        }
+    }
+
+    private static void scoreFileBoundaries() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        Maincontainer owner = owner("");
+        require(!Files.exists(file), "누락 파일 시나리오는 점수 파일 없이 시작해야 합니다.");
+        Scoreboardpanel panel = new Scoreboardpanel(owner);
+        require(scoreText(panel).equals(rankingRows()) && !Files.exists(file),
+            "누락 파일 조회는 빈 10순위를 표시하고 파일을 만들지 않아야 합니다.");
+        resetViaMenu(owner);
+        require(Files.isRegularFile(file) && Files.size(file) == 0, "누락 파일 초기화는 빈 파일을 생성해야 합니다.");
+        for (String content : List.of("", "\n \t\n\r\n")) {
+            Files.writeString(file, content);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows()) && Files.readString(file).equals(content),
+                "빈 파일·공백 행은 기록이 없고 조회가 파일을 바꾸면 안 됩니다.");
+        }
+    }
+
+    private static void scoreParseBoundaries() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        String content = "\n \t\ninvalid\nBad:not-a-number\nOverflow:2147483648\nUnderflow:-2147483649\n"
+            + "Extra:1:2\nMissing:\n: \n Top : +2147483647 \nFirst:50\nSecond:50\nThird:50\n"
+            + "Tail:20::\n홍길동:12\n:7\nZero:0\nNegative:-10\nMin:-2147483648\n";
+        Files.writeString(file, content);
+        Maincontainer owner = owner("");
+        String diagnostics = captureErrors(() -> {
+            Scoreboardpanel panel = new Scoreboardpanel(owner);
+            require(scoreText(panel).equals(rankingRows("Top: 2147483647", "First: 50", "Second: 50", "Third: 50",
+                    "Tail: 20", "홍길동: 12", ": 7", "Zero: 0", "Negative: -10", "Min: -2147483648")),
+                "trim·split·정수 경계·동점 파일 순서와 기존 허용값을 유지해야 합니다.");
+        });
+        require(diagnostics.contains("NumberFormatException"), "손상 숫자 행은 진단을 남기고 다음 정상 행을 읽어야 합니다.");
+        require(Files.readString(file).equals(content), "기록 조회가 원본 파일을 정리하거나 변경하면 안 됩니다.");
+    }
+
+    private static void scoreRefresh() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        Files.writeString(file, "Alice:200\nBob:100\n");
+        try (GameFixture fixture = new GameFixture()) {
+            Scoreboardpanel panel = new Scoreboardpanel(fixture.owner);
+            saveViaGame(fixture.game, "New", 300);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows("New: 300", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
+            resetViaMenu(fixture.owner);
+            panel.drawScore();
+            require(Files.size(file) == 0 && scoreText(panel).equals(rankingRows()), "초기화 후 이전 목록이 캐시에 남으면 안 됩니다.");
+            saveViaGame(fixture.game, "After", 7);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows("After: 7")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
+        }
+    }
+
+    private static void scoreIoDiagnostics() throws Exception {
+        Path file = Path.of("tetris_score.txt"), marker = file.resolve("keep.txt");
+        Files.createDirectory(file);
+        Files.writeString(marker, "untouched");
+        try (GameFixture fixture = new GameFixture()) {
+            String read = captureErrors(() -> require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows()),
+                "읽기 실패는 기존처럼 빈 순위를 표시해야 합니다."));
+            String append = captureErrors(() -> saveViaGame(fixture.game, "Failed", 1));
+            String clear = captureErrors(() -> resetViaMenu(fixture.owner));
+            for (String diagnostics : List.of(read, append, clear)) require(diagnostics.contains("Exception"),
+                "파일 IO 실패는 stacktrace 진단을 남겨야 합니다.");
+            require(Files.isDirectory(file) && Files.readString(marker).equals("untouched"), "실패 시 기존 디렉터리와 내용을 삭제하면 안 됩니다.");
+            Files.delete(marker);
+            Files.delete(file);
+            byte[] invalid = {(byte) 0xc3, 0x28};
+            Files.write(file, invalid);
+            String encoding = captureErrors(() -> require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows()),
+                "손상된 UTF-8도 기존 읽기 실패 경로를 유지해야 합니다."));
+            require(encoding.contains("MalformedInputException") && Arrays.equals(Files.readAllBytes(file), invalid),
+                "인코딩 오류 진단을 유지하고 원본 바이트를 변경하면 안 됩니다.");
+        }
+    }
+
+    private static void scoreStoreDirect() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        require(ScoreStore.readRanked().isEmpty() && !Files.exists(file), "저장소 직접 조회도 누락 파일을 만들면 안 됩니다.");
+        for (int i = 0; i < 12; i++) ScoreStore.append("P" + i, i * 10);
+        List<ScoreStore.Score> first = ScoreStore.readRanked();
+        require(first.size() == 12 && first.get(0).equals(new ScoreStore.Score("P11", 110))
+                && first.get(11).equals(new ScoreStore.Score("P0", 0)), "저장소는 상위 10개 표시와 독립적으로 전체 정상 기록을 정렬해야 합니다.");
+        first.clear();
+        require(ScoreStore.readRanked().size() == 12, "반환 목록 변경이 파일이나 다음 조회를 바꾸면 안 됩니다.");
+        ScoreStore.clear();
+        require(Files.size(file) == 0 && ScoreStore.readRanked().isEmpty(), "직접 초기화도 파일을 비우고 최신 결과를 반환해야 합니다.");
+        ScoreStore.append("After", 5);
+        require(ScoreStore.readRanked().equals(List.of(new ScoreStore.Score("After", 5))), "초기화 후 저장에도 과거 기록이 남으면 안 됩니다.");
     }
 
     private static void scoreReset() throws Exception {
