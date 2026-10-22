@@ -43,7 +43,7 @@ public class Gamepanel extends JPanel{
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);
         add(board);
 
-        nextblockpanel = new Nextblockpanel(this);
+        nextblockpanel = new Nextblockpanel();
         nextblockpanel.setBounds(WIDTH*330/500+20, 10, WIDTH*140/500, HEIGHT*140/600);
         add(nextblockpanel);
 
@@ -77,8 +77,8 @@ public class Gamepanel extends JPanel{
         setFocusTraversalKeysEnabled(false);
     }
     
-    protected void drawNextBoard() {
-		nextblockpanel.drawNextBoard();
+    protected void drawNextBoard(Block next) {
+		nextblockpanel.drawNextBoard(next);
 	}
 
     protected void drawScore() {
@@ -199,10 +199,6 @@ public class Gamepanel extends JPanel{
         remove(pausepanel);
         revalidate();
         repaint();
-    }
-
-    protected Block getNextBlock() {
-        return board.getNextBlock();
     }
 
     public class PlayerKeyListener implements KeyListener {
