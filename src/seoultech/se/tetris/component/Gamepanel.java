@@ -43,7 +43,7 @@ public class Gamepanel extends JPanel{
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
-        HEIGHT = maincontainer.getHeight(); WIDTH = maincontainer.getWidth();
+        HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
 
         board = new Board(this);
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);

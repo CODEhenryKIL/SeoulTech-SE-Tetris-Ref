@@ -17,7 +17,7 @@ public class Startpanel extends JPanel{
     private int height;
 
     public Startpanel(Maincontainer maincontainer) {
-        width = maincontainer.getWidth(); height = maincontainer.getHeight();
+        width = maincontainer.getConfiguredWidth(); height = maincontainer.getConfiguredHeight();
         this.maincontainer = maincontainer;
         setPreferredSize(new Dimension(width, height));
 		setLayout(new GridBagLayout()); // 컴포넌트 간의 배치를 자유롭게 하기 위해서 GridBagLayout을 사용

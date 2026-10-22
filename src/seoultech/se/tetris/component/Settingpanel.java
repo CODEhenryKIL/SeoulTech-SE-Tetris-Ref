@@ -45,8 +45,8 @@ public class Settingpanel extends JPanel{
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
 
-        HEIGHT = maincontainer.getHeight();
-        WIDTH = maincontainer.getWidth();
+        HEIGHT = maincontainer.getConfiguredHeight();
+        WIDTH = maincontainer.getConfiguredWidth();
 
         int panelWidth = 0; int panelHeight = 0;
 
@@ -205,7 +205,7 @@ public class Settingpanel extends JPanel{
             keyList.setBounds(10, 10, settingPanel.getWidth(), settingPanel.getHeight());
             keyList.setLayout(new GridBagLayout());
             String[] parts = maincontainer.setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
-            Integer[] currentKey = new Integer[6];
+            currentKey = new Integer[6];
             for (int i = 0; i < 6; i++) currentKey[i] = Integer.parseInt(parts[i].split("=")[1]);
             ChangeKeyButton.resetStaticField();
 
