@@ -12,7 +12,6 @@ import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Random;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
 
 import javax.swing.BorderFactory;
@@ -21,13 +20,8 @@ import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
 import seoultech.se.tetris.blocks.Block;
-import seoultech.se.tetris.blocks.IBlock;
-import seoultech.se.tetris.blocks.JBlock;
-import seoultech.se.tetris.blocks.LBlock;
-import seoultech.se.tetris.blocks.OBlock;
-import seoultech.se.tetris.blocks.SBlock;
-import seoultech.se.tetris.blocks.TBlock;
-import seoultech.se.tetris.blocks.ZBlock;
+import seoultech.se.tetris.blocks.BlockGenerator;
+import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
 	private static final long serialVersionUID = 2434035659171694595L;
@@ -41,7 +35,7 @@ public class Board extends JComponent {
 	private int[][] board;
 	private ArrayList<TextChunk> textChunks;
 	protected Timer timer;
-	private final Random random = new Random();
+	private final BlockGenerator blockGenerator = new BlockGenerator();
 	private Block curr;
 	private boolean isPaused = false;
 	private int score = 0;
@@ -78,8 +72,8 @@ public class Board extends JComponent {
 	}
 
 	protected void boardStart() {
-		curr = getRandomBlock();
-		next = getRandomBlock();
+		curr = blockGenerator.nextBlock();
+		next = blockGenerator.nextBlock();
 		this.gamepanel.drawNextBoard();
 		StringBuffer sb = new StringBuffer();
 		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR); // 윗쪽 보더
@@ -109,27 +103,6 @@ public class Board extends JComponent {
 		}
 	}
 
-	private Block getRandomBlock() {
-		int block = random.nextInt(7);
-		switch(block) {
-		case 0:
-			return new IBlock();
-		case 1:
-			return new JBlock();
-		case 2:
-			return new LBlock();
-		case 3:
-			return new ZBlock();
-		case 4:
-			return new SBlock();
-		case 5:
-			return new TBlock();
-		case 6:
-			return new OBlock();			
-		}
-		return new LBlock();
-	}
-	
 	private void placeBlock() {
 		int dy = y; int dx = x;
 		while(canDown(dx, dy)) dy++;
@@ -173,36 +146,15 @@ public class Board extends JComponent {
 	}
 
 	protected boolean canDown(int x, int y) {
-		if(y < HEIGHT - curr.height()) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j+1][x+i]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canDown(board, curr, x, y);
 	}
 
 	protected boolean canRight() {
-		if(x < WIDTH - curr.width()) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j][x+i+1]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canRight(board, curr, x, y);
 	}
 
 	protected boolean canLeft() {
-		if(x > 0) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j][x+i-1]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canLeft(board, curr, x, y);
 	}
 
 	protected boolean canRotate() {
@@ -210,25 +162,7 @@ public class Board extends JComponent {
 	}
 
 	private int[] rotationPosition() {
-		int rotatedWidth = curr.height();
-		int rotatedHeight = curr.width();
-		int rotatedX = Math.min(x, WIDTH - rotatedWidth);
-		int startY = Math.min(y, HEIGHT - rotatedHeight);
-
-		for (int rotatedY = startY; rotatedY >= Math.max(0, startY - rotatedHeight); rotatedY--) {
-			boolean clear = true;
-			for (int row = 0; row < curr.height() && clear; row++) {
-				for (int col = 0; col < curr.width(); col++) {
-					if (curr.getShape(col, row) > 0
-							&& board[rotatedY + col][rotatedX + curr.height() - row - 1] != 0) {
-						clear = false;
-						break;
-					}
-				}
-			}
-			if (clear) return new int[] {rotatedX, rotatedY};
-		}
-		return null;
+		return CollisionRules.rotationPosition(board, curr, x, y);
 	}
 
 	protected boolean moveDown() {
@@ -239,18 +173,8 @@ public class Board extends JComponent {
 			placeBlock();
 			return true;
 		}
-		else {
-			placeBlock();
-			eraseLine();
-			if (isgameover()) return false;
-			curr = next;
-			next = getRandomBlock();
-			this.gamepanel.drawNextBoard();
-			x = 3;
-			y = 0;
-			placeBlock();
-			return false;
-		}
+		lockAndAdvanceBlock();
+		return false;
 	}
 
 	protected void hardDrop() {  // 하드 드롭 기능 구현
@@ -259,18 +183,23 @@ public class Board extends JComponent {
 			y++;
 			addScore(DOWNPOINT * 2);
 		}
+		if (!lockAndAdvanceBlock()) return;
+		drawBoard();
+	}
+
+	private boolean lockAndAdvanceBlock() {
 		placeBlock();
 		eraseLine();
 
-		if (isgameover()) return;
+		if (isgameover()) return false;
 		curr = next;
-		next = getRandomBlock();
+		next = blockGenerator.nextBlock();
 		this.gamepanel.drawNextBoard();
 
 		x = 3;
 		y = 0;
 		placeBlock();
-		drawBoard();
+		return true;
 	}
 
 	protected void moveRight() {

@@ -24,6 +24,8 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import seoultech.se.tetris.blocks.*;
+import seoultech.se.tetris.rules.CollisionRules;
+import seoultech.se.tetris.score.ScoreStore;
 import sun.misc.Unsafe;
 
 /**
@@ -80,14 +82,30 @@ public final class RefactoringRegressionTest {
         new Check("block-initialization", "7종 블록의 초기 모양 전체·색상", RefactoringRegressionTest::blockInitialization),
         new Check("block-rotation", "7종 블록의 칸 수·색·시계 방향 회전", RefactoringRegressionTest::blockRotation),
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
+        new Check("block-generation-lifecycle", "시작의 두 블록 생성·난수 소비와 게임판 간 생성 독립성", RefactoringRegressionTest::blockGenerationLifecycle),
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
+        new Check("collision-boundaries", "7종·4회전의 벽·바닥·고정 블록과 빈 칸 판정", RefactoringRegressionTest::collisionBoundaries),
+        new Check("rotation-boundaries", "회전 좌표 보정·위쪽 탐색 순서와 범위·상단·빈 칸", RefactoringRegressionTest::rotationBoundaries),
+        new Check("collision-query-purity", "판정 시 활성 블록 포함 여부에 관계없이 격자·블록·좌표 불변", RefactoringRegressionTest::collisionQueryPurity),
+        new Check("collision-rules-direct", "화면·타이머 없는 직접 판정과 좌표 결과의 독립성", RefactoringRegressionTest::collisionRulesDirect),
         new Check("blocked-rotation", "막힌 회전의 좌표·모양 유지", RefactoringRegressionTest::blockedRotation),
         new Check("hard-drop", "하드드롭 위치·점수·다음 블록 승계", RefactoringRegressionTest::hardDrop),
+        new Check("drop-input-score", "자동·수동 낙하와 하드드롭의 기존 점수·이동", RefactoringRegressionTest::dropInputScore),
+        new Check("lock-advance", "다섯 입력 경로의 바닥·고정 블록 위 고정과 미리보기 승계", RefactoringRegressionTest::lockAdvance),
+        new Check("lock-line-level", "두 낙하의 실제 고정을 통한 두 줄 삭제·레벨 경계", RefactoringRegressionTest::lockLineLevel),
+        new Check("lock-game-over", "고정 후 게임 오버 시 승계·난수 진행 없이 즉시 중단", RefactoringRegressionTest::lockGameOver),
+        new Check("lock-clear-before-game-over", "줄 삭제로 생성 자리가 비면 게임 오버 없이 다음 블록 배치", RefactoringRegressionTest::lockClearBeforeGameOver),
         new Check("line-clear", "한 줄·여러 줄 삭제와 기존 점수 규칙", RefactoringRegressionTest::lineClear),
         new Check("level-up", "누적 10줄 삭제 후 레벨·속도 변경", RefactoringRegressionTest::levelUp),
         new Check("pause-resume", "일시정지 중 입력 차단·타이머 재개", RefactoringRegressionTest::pauseResume),
         new Check("game-over", "생성 위치가 막히면 타이머 종료·중첩 방지", RefactoringRegressionTest::gameOver),
         new Check("score-save", "점수 저장 후 점수판에서 다시 읽기", RefactoringRegressionTest::scoreSave),
+        new Check("score-append-bytes", "점수 추가 저장의 UTF-8·줄바꿈·기존 무개행 바이트 유지", RefactoringRegressionTest::scoreAppendBytes),
+        new Check("score-file-boundaries", "누락·빈 파일·공백 기록 조회와 누락 파일 초기화", RefactoringRegressionTest::scoreFileBoundaries),
+        new Check("score-parse-boundaries", "기존 점수 파싱·정수 경계·동점 순서·손상 뒤 정상 기록", RefactoringRegressionTest::scoreParseBoundaries),
+        new Check("score-refresh", "기존 점수판의 저장·초기화·재저장 후 최신 기록 조회", RefactoringRegressionTest::scoreRefresh),
+        new Check("score-io-diagnostics", "읽기·저장·초기화 실패의 진단과 원본 보존", RefactoringRegressionTest::scoreIoDiagnostics),
+        new Check("score-store-direct", "화면 없는 점수 저장·전체 정렬·목록 독립성과 초기화", RefactoringRegressionTest::scoreStoreDirect),
         new Check("score-ranking", "손상된 기록 무시·내림차순·상위 10개", RefactoringRegressionTest::scoreRanking),
         new Check("score-reset", "설정 메뉴의 기록 초기화·다시 읽기", RefactoringRegressionTest::scoreReset)
     );
@@ -597,20 +615,92 @@ public final class RefactoringRegressionTest {
 
     private static void blockGeneration() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
-            Random random = (Random) get(fixture.board, "random");
+            Random random = generationRandom(fixture.board);
             List<String> first = generatedTypes(fixture.board, random, 12345L);
             List<String> second = generatedTypes(fixture.board, random, 12345L);
             require(first.equals(second), "같은 시드에서 생성 순서가 재현되어야 합니다.");
             require(new HashSet<>(first).equals(Set.of("IBlock", "JBlock", "LBlock", "OBlock", "SBlock", "TBlock", "ZBlock")),
                 "실제 생성기가 일곱 종류를 생성해야 합니다.");
+            for (long seed : new long[] {0, -1, Long.MAX_VALUE}) generatedTypes(fixture.board, random, seed);
         }
     }
 
     private static List<String> generatedTypes(Board board, Random random, long seed) throws Exception {
         random.setSeed(seed);
+        Random expected = new Random(seed);
+        List<Block> prototypes = List.of(new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock());
+        Set<Block> instances = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
         List<String> result = new ArrayList<>();
-        for (int i = 0; i < 210; i++) result.add(call(board, "getRandomBlock").getClass().getSimpleName());
+        for (int i = 0; i < 210; i++) {
+            Block block = generateBlock(board);
+            Block prototype = prototypes.get(expected.nextInt(7));
+            require(block.getClass() == prototype.getClass(), "난수 0~6과 블록 종류의 기존 대응을 유지해야 합니다.");
+            require(instances.add(block), "같은 종류여도 매번 새 블록 인스턴스를 생성해야 합니다.");
+            require(shape(block).equals(shape(prototype)) && block.getColor().equals(prototype.getColor()),
+                "이전 블록의 회전 상태를 공유하지 않고 기본 모양·색으로 생성해야 합니다.");
+            result.add(block.getClass().getSimpleName());
+            block.rotate();
+        }
+        require(random.nextLong() == expected.nextLong(), "블록 하나마다 기존 nextInt(7)을 정확히 한 번만 소비해야 합니다.");
         return result; // 통계적 분포/2차 난이도 가중치 테스트가 아니라 재현 가능한 생성 경로 검사.
+    }
+
+    private static Random generationRandom(Board board) throws Exception {
+        return (Random) get(get(board, "blockGenerator"), "random");
+    }
+
+    private static Block generateBlock(Board board) throws Exception {
+        return ((BlockGenerator) get(board, "blockGenerator")).nextBlock();
+    }
+
+    private static void blockGenerationLifecycle() throws Exception {
+        try (GameFixture first = new GameFixture(); GameFixture second = new GameFixture()) {
+            Board a = new Board(first.game), b = new Board(second.game);
+            try {
+                set(first.game, "board", a);
+                set(second.game, "board", b);
+                Random randomA = generationRandom(a), randomB = generationRandom(b);
+                require(randomA != randomB, "게임판마다 독립된 난수 상태를 소유해야 합니다.");
+                randomA.setSeed(12345);
+                randomB.setSeed(12345);
+                Random expected = new Random(12345);
+                List<String> types = List.of("IBlock", "JBlock", "LBlock", "ZBlock", "SBlock", "TBlock", "OBlock");
+                String currentType = types.get(expected.nextInt(7)), nextType = types.get(expected.nextInt(7));
+                a.boardStart();
+                b.boardStart();
+                a.timer.stop();
+                b.timer.stop();
+                for (Board board : new Board[] {a, b}) {
+                    require(get(board, "curr").getClass().getSimpleName().equals(currentType)
+                            && board.getNextBlock().getClass().getSimpleName().equals(nextType),
+                        "시작은 생성기의 첫 두 결과를 curr·next 순서로 사용해야 합니다.");
+                    require(get(board, "curr") != board.getNextBlock() && board.x == 3 && board.y == 0,
+                        "시작의 curr·next는 별개 객체이고 시작 좌표를 유지해야 합니다.");
+                }
+                long expectedState = expected.nextLong();
+                require(randomA.nextLong() == expectedState && randomB.nextLong() == expectedState,
+                    "게임 시작에서 난수를 정확히 두 번 소비해야 합니다.");
+                randomA.setSeed(205);
+                randomB.setSeed(205);
+                Block previewA = a.getNextBlock(), previewB = b.getNextBlock();
+                String nextAfterLock = types.get(new Random(205).nextInt(7));
+                a.hardDrop();
+                for (int i = 0; i < 20; i++) generateBlock(a);
+                b.hardDrop();
+                require(get(a, "curr") == previewA && get(b, "curr") == previewB,
+                    "다음 블록을 복제하지 않고 미리보기 객체 그대로 승계해야 합니다.");
+                require(a.getNextBlock().getClass().getSimpleName().equals(nextAfterLock)
+                        && b.getNextBlock().getClass().getSimpleName().equals(nextAfterLock),
+                    "한 게임판의 추가 생성이 다른 게임판의 생성 순서에 영향을 주면 안 됩니다.");
+                require(a.getNextBlock() != previewA && b.getNextBlock() != previewB,
+                    "승계 후 미리보기는 새 인스턴스여야 합니다.");
+                assertPreview(first.game, a.getNextBlock());
+                assertPreview(second.game, b.getNextBlock());
+            } finally {
+                if (a.timer != null) a.timer.stop();
+                if (b.timer != null) b.timer.stop();
+            }
+        }
     }
 
     private static void collision() throws Exception {
@@ -645,6 +735,137 @@ public final class RefactoringRegressionTest {
         }
     }
 
+    private static void collisionBoundaries() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (Block block : blocks()) for (int rotation = 0; rotation < 4; rotation++) {
+                prepare(board, block, 0, 5);
+                board.moveLeft();
+                require(board.x == 0, "모든 종류·회전에서 왼쪽 벽을 통과하면 안 됩니다.");
+                int right = 10 - block.width(), bottom = 20 - block.height();
+                prepare(board, block, right, 5);
+                board.moveRight();
+                require(board.x == right, "모든 종류·회전에서 오른쪽 벽을 통과하면 안 됩니다.");
+                prepare(board, block, 3, bottom);
+                call(board, "eraseCurr");
+                require(!board.canDown(3, bottom), "모든 종류·회전에서 바닥 아래로 내려가면 안 됩니다.");
+                for (int[] direction : new int[][] {{-1, 0}, {1, 0}, {0, 1}}) {
+                    prepare(board, block, 3, 5);
+                    call(board, "eraseCurr");
+                    require(canMove(board, direction), "빈 공간에서 이동을 허용해야 합니다.");
+                    boolean occupiedChecked = false, holeChecked = false;
+                    for (int row = 0; row < block.height(); row++) for (int col = 0; col < block.width(); col++) {
+                        int x = 3 + col + direction[0], y = 5 + row + direction[1];
+                        if (block.getShape(col, row) > 0 && !occupiedChecked) {
+                            cells(board)[y][x] = 1;
+                            require(!canMove(board, direction), "이동할 자리에 고정 블록이 있으면 거부해야 합니다.");
+                            cells(board)[y][x] = 0;
+                            occupiedChecked = true;
+                        } else if (block.getShape(col, row) == 0 && !holeChecked) {
+                            cells(board)[y][x] = 1;
+                            require(canMove(board, direction), "블록 모양의 빈 칸에만 장애물이 있으면 이동을 허용해야 합니다.");
+                            cells(board)[y][x] = 0;
+                            holeChecked = true;
+                        }
+                    }
+                }
+                block.rotate();
+            }
+        }
+    }
+
+    private static boolean canMove(Board board, int[] direction) {
+        return direction[0] < 0 ? board.canLeft() : direction[0] > 0 ? board.canRight() : board.canDown(board.x, board.y);
+    }
+
+    private static void rotationBoundaries() throws Exception {
+        IBlock vertical = new IBlock();
+        vertical.rotate();
+        record RotationCase(Block block, int x, int y, int[][] obstacles, int[] expected) {}
+        List<RotationCase> cases = List.of(
+            new RotationCase(vertical, 9, 5, new int[0][], new int[] {6, 5}),
+            new RotationCase(new IBlock(), 3, 19, new int[0][], new int[] {3, 16}),
+            new RotationCase(new IBlock(), 3, 5, new int[][] {{3, 6}}, new int[] {3, 2}),
+            new RotationCase(new IBlock(), 3, 5, new int[][] {{3, 4}, {3, 6}}, null),
+            new RotationCase(new IBlock(), 3, 0, new int[][] {{3, 1}}, null),
+            new RotationCase(new TBlock(), 3, 5, new int[][] {{4, 7}}, new int[] {3, 5})
+        );
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (RotationCase scenario : cases) {
+                prepare(board, scenario.block(), scenario.x(), scenario.y());
+                call(board, "eraseCurr");
+                for (int[] cell : scenario.obstacles()) fixedCell(board, cell[0], cell[1]);
+                String grid = Arrays.deepToString(cells(board)), originalShape = shape(scenario.block());
+                int[] result = (int[]) call(board, "rotationPosition");
+                require(Arrays.equals(result, scenario.expected()), "기존 회전 좌표·후보 우선순위와 탐색 한계를 유지해야 합니다.");
+                require(grid.equals(Arrays.deepToString(cells(board))) && originalShape.equals(shape(scenario.block())),
+                    "회전 좌표 계산은 격자와 블록을 수정하면 안 됩니다.");
+                require(board.canRotate() == (result != null), "회전 허용 여부와 좌표 계산 결과가 일치해야 합니다.");
+                call(board, "placeBlock");
+                String placed = Arrays.deepToString(cells(board));
+                board.rotate();
+                if (result == null) {
+                    require(board.x == scenario.x() && board.y == scenario.y()
+                            && originalShape.equals(shape(scenario.block())) && placed.equals(Arrays.deepToString(cells(board))),
+                        "회전 후보가 없으면 좌표·모양·격자를 유지해야 합니다.");
+                } else {
+                    require(board.x == result[0] && board.y == result[1], "계산된 첫 유효 회전 좌표를 적용해야 합니다.");
+                    require(Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 4 + scenario.obstacles().length,
+                        "회전 후 블록 네 칸과 기존 장애물을 겹침 없이 유지해야 합니다.");
+                }
+            }
+        }
+    }
+
+    private static void collisionQueryPurity() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (Block block : blocks()) for (int rotation = 0; rotation < 4; rotation++) {
+                for (boolean activeIncluded : new boolean[] {true, false}) {
+                    prepare(board, block, 3, 5);
+                    if (!activeIncluded) call(board, "eraseCurr");
+                    fixedCell(board, 9, 19);
+                    int[][] grid = cells(board);
+                    Object chunks = get(board, "textChunks");
+                    String beforeGrid = Arrays.deepToString(grid), beforeShape = shape(block);
+                    int score = board.getScore();
+                    boolean left = board.canLeft(), right = board.canRight(), down = board.canDown(3, 5);
+                    int[] position = (int[]) call(board, "rotationPosition");
+                    require(left == board.canLeft() && right == board.canRight() && down == board.canDown(3, 5)
+                            && Arrays.equals(position, (int[]) call(board, "rotationPosition")), "같은 입력의 판정은 반복해도 같아야 합니다.");
+                    require(cells(board) == grid && beforeGrid.equals(Arrays.deepToString(grid))
+                            && beforeShape.equals(shape(block)) && get(board, "curr") == block
+                            && board.x == 3 && board.y == 5 && board.getScore() == score && get(board, "textChunks") == chunks,
+                        "활성 블록 포함 여부에 관계없이 입력 격자·블록·좌표·표시를 수정/정규화하면 안 됩니다.");
+                }
+                block.rotate();
+            }
+        }
+    }
+
+    private static void collisionRulesDirect() {
+        int[][] grid = new int[4][6];
+        Block block = new OBlock();
+        require(CollisionRules.canLeft(grid, block, 4, 2)
+                && !CollisionRules.canRight(grid, block, 4, 2)
+                && !CollisionRules.canDown(grid, block, 4, 2), "판정 경계는 전달된 직사각형 격자 크기를 따라야 합니다.");
+        int[] position = CollisionRules.rotationPosition(grid, block, 4, 2);
+        require(Arrays.equals(position, new int[] {4, 2}), "빈 격자에서 O블록은 제자리 회전할 수 있어야 합니다.");
+        position[0] = 99;
+        require(Arrays.equals(CollisionRules.rotationPosition(grid, block, 4, 2), new int[] {4, 2}),
+            "반환 좌표를 수정해도 다음 판정에 영향을 주면 안 됩니다.");
+        grid[2][3] = 1;
+        String before = Arrays.deepToString(grid), initialShape = shape(block);
+        require(!CollisionRules.canLeft(grid, block, 4, 2), "작은 격자에서도 고정 블록 충돌을 판정해야 합니다.");
+        require(before.equals(Arrays.deepToString(grid)) && initialShape.equals(shape(block)), "직접 판정은 입력을 수정하면 안 됩니다.");
+        Block line = new IBlock();
+        int[][] blocked = new int[20][10];
+        blocked[4][3] = blocked[6][3] = 1;
+        require(CollisionRules.rotationPosition(blocked, line, 3, 5) == null,
+            "직접 판정에서도 기존 위쪽 탐색 범위 밖으로 우회하면 안 됩니다.");
+    }
+
     private static void hardDrop() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
             Board board = fixture.board;
@@ -658,6 +879,181 @@ public final class RefactoringRegressionTest {
             require(get(board, "curr") == next && board.x == 3 && board.y == 0, "미리보기 블록이 다음 현재 블록이 되어야 합니다.");
             require(board.getNextBlock() != null, "새 미리보기 블록이 생성되어야 합니다.");
         }
+    }
+
+    private enum DropInput { MOVE_DOWN, TIMER, DOWN_KEY, HARD_DROP, HARD_DROP_KEY }
+
+    private static void drop(GameFixture fixture, DropInput input, boolean expectedMove) {
+        switch (input) {
+            case MOVE_DOWN -> require(fixture.board.moveDown() == expectedMove, "moveDown 반환값이 바뀌면 안 됩니다.");
+            case TIMER -> {
+                for (var listener : fixture.initialTimer.getActionListeners()) {
+                    listener.actionPerformed(new java.awt.event.ActionEvent(fixture.initialTimer, 0, "regression-tick"));
+                }
+            }
+            case DOWN_KEY -> press(fixture.game, Maincontainer.DOWN);
+            case HARD_DROP -> fixture.board.hardDrop();
+            case HARD_DROP_KEY -> press(fixture.game, Maincontainer.HARD_DROP);
+        }
+    }
+
+    private static void dropInputScore() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                Block current = new OBlock();
+                prepare(board, current, 3, 0);
+                Block next = board.getNextBlock();
+                drop(fixture, input, true);
+                boolean hard = input == DropInput.HARD_DROP || input == DropInput.HARD_DROP_KEY;
+                int expected = hard ? 36 : input == DropInput.DOWN_KEY ? 2 : 1;
+                require(board.getScore() == expected, input + ": 1칸 자동/직접=1점, 수동=2점, 하드드롭=거리×2점을 유지해야 합니다.");
+                require(((JTextPane) get(fixture.game, "scorepanel")).getText().contains("\n" + expected), "화면 점수도 갱신되어야 합니다.");
+                require(board.x == 3 && board.y == (hard ? 0 : 1), input + ": 이동 후 좌표가 달라지면 안 됩니다.");
+                require(get(board, "curr") == (hard ? next : current), input + ": 하드드롭만 즉시 다음 블록으로 넘어가야 합니다.");
+                if (!hard) require(board.getNextBlock() == next, "이동만 할 때 미리보기 블록이 바뀌면 안 됩니다.");
+            }
+        }
+    }
+
+    private static void lockAdvance() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            for (boolean obstacle : new boolean[] {false, true}) {
+                try (GameFixture fixture = new GameFixture()) {
+                    Board board = fixture.board;
+                    int x = obstacle ? 3 : 0, y = obstacle ? 5 : 18;
+                    prepare(board, new OBlock(), x, y);
+                    if (obstacle) {
+                        call(board, "eraseCurr");
+                        fixedCell(board, 3, 7);
+                        call(board, "placeBlock");
+                    }
+                    Block next = board.getNextBlock();
+                    Random random = generationRandom(board);
+                    random.setSeed(205);
+                    Random expected = new Random(205);
+                    String expectedNext = List.of("IBlock", "JBlock", "LBlock", "ZBlock", "SBlock", "TBlock", "OBlock").get(expected.nextInt(7));
+                    drop(fixture, input, false);
+                    require(board.getScore() == 0, input + ": 더 내려갈 수 없으면 낙하 점수를 추가하면 안 됩니다.");
+                    require(get(board, "curr") == next && board.x == 3 && board.y == 0, "미리보기 객체를 그대로 시작 좌표로 승계해야 합니다.");
+                    require(board.getNextBlock().getClass().getSimpleName().equals(expectedNext)
+                            && random.nextLong() == expected.nextLong(), "새 미리보기는 기존 생성기를 정확히 한 번 사용해야 합니다.");
+                    assertPreview(fixture.game, board.getNextBlock());
+                    for (int row = y; row < y + 2; row++) for (int col = x; col < x + 2; col++) {
+                        require(cells(board)[row][col] == 1, "기존 O블록을 제자리에 고정해야 합니다.");
+                        assertChunk(board, col, row, "O", java.awt.Color.YELLOW);
+                    }
+                    require(Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == (obstacle ? 9 : 8), "고정 블록과 새 현재 블록을 한 번씩만 배치해야 합니다.");
+                    assertChunk(board, 4, 0, "O", java.awt.Color.MAGENTA);
+                    if (!obstacle) {
+                        assertChunk(board, 4, 18, "O", java.awt.Color.DARK_GRAY);
+                        for (int col = 3; col <= 5; col++) assertChunk(board, col, 19, "O", java.awt.Color.DARK_GRAY);
+                    }
+                    require(get(fixture.game, "gameOverPanel") == null, "정상 고정에서 게임 오버를 표시하면 안 됩니다.");
+                }
+            }
+        }
+    }
+
+    private static void lockLineLevel() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                prepare(board, new OBlock(), 3, 18);
+                call(board, "eraseCurr");
+                fillLockLines(board);
+                fixedCell(board, 0, 17);
+                call(board, "placeBlock");
+                set(board, "erasedLineNum", 8);
+                Block next = board.getNextBlock();
+                drop(fixture, input, false);
+                require(board.getScore() == 300 && (int) get(board, "erasedLineNum") == 10, "고정한 O블록으로 두 줄을 지우고 기존 combo 점수를 적용해야 합니다.");
+                require((int) get(board, "level") == 2 && board.timer.getDelay() == 793, "10줄 경계에서 레벨과 타이머 간격을 갱신해야 합니다.");
+                require(cells(board)[19][0] == 1 && Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 5,
+                    "남은 고정 칸을 두 줄 내리고 새 블록을 한 번만 배치해야 합니다.");
+                assertChunk(board, 0, 19, "O", java.awt.Color.RED);
+                require(get(board, "curr") == next && board.x == 3 && board.y == 0, "줄 삭제 후에도 next 승계를 유지해야 합니다.");
+            }
+        }
+    }
+
+    private static void lockGameOver() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                Block current = new OBlock(), next = new OBlock();
+                prepare(board, current, 0, 18);
+                set(board, "next", next);
+                fixedCell(board, 3, 0);
+                fixture.game.drawNextBoard();
+                Object preview = get(get(fixture.game, "nextblockpanel"), "textChunks");
+                Random random = generationRandom(board);
+                random.setSeed(205);
+                fixture.initialTimer.start();
+                drop(fixture, input, false);
+                require(board.timer == null && !fixture.initialTimer.isRunning() && get(fixture.game, "gameOverPanel") != null,
+                    "두 낙하 경로 모두 타이머를 종료하고 게임 오버를 표시해야 합니다.");
+                require(get(board, "curr") == current && board.getNextBlock() == next && board.x == 0 && board.y == 18,
+                    "게임 오버 뒤 curr/next·좌표를 바꾸면 안 됩니다.");
+                require(random.nextLong() == new Random(205).nextLong(), "게임 오버 뒤 새 난수를 소비하면 안 됩니다.");
+                require(get(get(fixture.game, "nextblockpanel"), "textChunks") == preview,
+                    "게임 오버 뒤 미리보기 표시를 새로 바꾸면 안 됩니다.");
+                assertPreview(fixture.game, next);
+                require(board.getScore() == 0 && cells(board)[0][3] == 1
+                        && Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 5,
+                    "게임 오버 뒤 점수 추가나 다음 블록 중첩이 없어야 합니다.");
+            }
+        }
+    }
+
+    private static void lockClearBeforeGameOver() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                prepare(board, new OBlock(), 3, 18);
+                call(board, "eraseCurr");
+                fillLockLines(board);
+                Block next = new OBlock();
+                set(board, "next", next);
+                fixedCell(board, 3, 0);
+                call(board, "placeBlock");
+                drop(fixture, input, false);
+                require(get(fixture.game, "gameOverPanel") == null && board.timer != null,
+                    "줄 삭제가 생성 자리를 비우면 게임 오버로 종료하면 안 됩니다.");
+                require(get(board, "curr") == next && board.getScore() == 300 && cells(board)[2][3] == 1,
+                    "줄 삭제를 게임 오버 판정보다 먼저 하고 다음 블록을 배치해야 합니다.");
+                require(cells(board)[0][3] == 1 && cells(board)[0][4] == 1 && cells(board)[1][3] == 1 && cells(board)[1][4] == 1,
+                    "비워진 시작 좌표에 O블록이 정상 배치되어야 합니다.");
+            }
+        }
+    }
+
+    private static void fillLockLines(Board board) throws Exception {
+        for (int row = 18; row < 20; row++) for (int col = 0; col < 10; col++) {
+            if (col != 3 && col != 4) fixedCell(board, col, row);
+        }
+    }
+
+    private static void assertPreview(Gamepanel game, Block next) throws Exception {
+        StringBuilder expected = new StringBuilder("      \n      \n");
+        for (int row = 0; row < next.height(); row++) {
+            expected.append(' ');
+            for (int col = 0; col < next.width(); col++) expected.append(next.getShape(col, row) == 0 ? ' ' : 'O');
+            expected.append('\n');
+        }
+        StringBuilder actual = new StringBuilder();
+        for (Object chunk : (List<?>) get(get(game, "nextblockpanel"), "textChunks")) {
+            actual.append(get(chunk, "text"));
+            require(get(chunk, "color").equals(next.getColor()), "미리보기 색이 새 next와 같아야 합니다.");
+        }
+        require(actual.toString().equals(expected.toString()), "미리보기 표시가 새 next 모양 전체와 같아야 합니다.");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void assertChunk(Board board, int x, int y, String text, java.awt.Color color) throws Exception {
+        List<Board.TextChunk> chunks = (List<Board.TextChunk>) get(board, "textChunks");
+        Board.TextChunk chunk = chunks.get((y + 1) * 13 + x + 1);
+        require(chunk.text.equals(text) && chunk.color.equals(color), "표시 청크가 격자·블록 색과 일치해야 합니다: " + x + "," + y);
     }
 
     private static void lineClear() throws Exception {
@@ -749,6 +1145,143 @@ public final class RefactoringRegressionTest {
         }
         panel.drawScore();
         require(scoreText(panel).equals(text), "손상된 기록이 있어도 재조회 결과가 같아야 합니다.");
+    }
+
+    private static void saveViaGame(Gamepanel game, String name, int score) throws Exception {
+        set(game, "usrname", name);
+        set(game, "score", score);
+        call(game, "saveScore");
+    }
+
+    private static String rankingRows(String... entries) {
+        StringBuilder expected = new StringBuilder();
+        for (int i = 0; i < 10; i++) expected.append(i + 1).append(".\t")
+            .append(i < entries.length ? entries[i] : "###: 0").append('\n');
+        return expected.toString();
+    }
+
+    private static void resetViaMenu(Maincontainer owner) throws Exception {
+        Settingpanel panel = new Settingpanel(owner);
+        call(panel, "selectDown");
+        call(panel, "selectDown");
+        call(panel, "selectEnter");
+    }
+
+    private static String captureErrors(CheckedRunnable action) throws Exception {
+        java.io.PrintStream previous = System.err;
+        var bytes = new java.io.ByteArrayOutputStream();
+        try (var capture = new java.io.PrintStream(bytes, true, java.nio.charset.StandardCharsets.UTF_8)) {
+            System.setErr(capture);
+            try { action.run(); } finally { System.setErr(previous); }
+        }
+        return bytes.toString(java.nio.charset.StandardCharsets.UTF_8);
+    }
+
+    private static void scoreAppendBytes() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        String newline = System.lineSeparator();
+        try (GameFixture fixture = new GameFixture()) {
+            saveViaGame(fixture.game, "한글", Integer.MIN_VALUE);
+            saveViaGame(fixture.game, "B", Integer.MAX_VALUE);
+            require(Files.readString(file).equals("한글:-2147483648" + newline + "B:2147483647" + newline),
+                "추가 저장은 기존 UTF-8·이름:점수·플랫폼 줄바꿈을 유지해야 합니다.");
+            Files.writeString(file, "Legacy:1");
+            saveViaGame(fixture.game, "Next", 2);
+            require(Files.readString(file).equals("Legacy:1Next:2" + newline),
+                "기존 무개행 파일에도 기존 APPEND처럼 앞 구분자를 추가하지 않아야 합니다.");
+            saveViaGame(fixture.game, "Fresh", 3);
+            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3")),
+                "잘못 이어진 행 뒤의 정상 추가 기록은 읽을 수 있어야 합니다.");
+        }
+    }
+
+    private static void scoreFileBoundaries() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        Maincontainer owner = owner("");
+        require(!Files.exists(file), "누락 파일 시나리오는 점수 파일 없이 시작해야 합니다.");
+        Scoreboardpanel panel = new Scoreboardpanel(owner);
+        require(scoreText(panel).equals(rankingRows()) && !Files.exists(file),
+            "누락 파일 조회는 빈 10순위를 표시하고 파일을 만들지 않아야 합니다.");
+        resetViaMenu(owner);
+        require(Files.isRegularFile(file) && Files.size(file) == 0, "누락 파일 초기화는 빈 파일을 생성해야 합니다.");
+        for (String content : List.of("", "\n \t\n\r\n")) {
+            Files.writeString(file, content);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows()) && Files.readString(file).equals(content),
+                "빈 파일·공백 행은 기록이 없고 조회가 파일을 바꾸면 안 됩니다.");
+        }
+    }
+
+    private static void scoreParseBoundaries() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        String content = "\n \t\ninvalid\nBad:not-a-number\nOverflow:2147483648\nUnderflow:-2147483649\n"
+            + "Extra:1:2\nMissing:\n: \n Top : +2147483647 \nFirst:50\nSecond:50\nThird:50\n"
+            + "Tail:20::\n홍길동:12\n:7\nZero:0\nNegative:-10\nMin:-2147483648\n";
+        Files.writeString(file, content);
+        Maincontainer owner = owner("");
+        String diagnostics = captureErrors(() -> {
+            Scoreboardpanel panel = new Scoreboardpanel(owner);
+            require(scoreText(panel).equals(rankingRows("Top: 2147483647", "First: 50", "Second: 50", "Third: 50",
+                    "Tail: 20", "홍길동: 12", ": 7", "Zero: 0", "Negative: -10", "Min: -2147483648")),
+                "trim·split·정수 경계·동점 파일 순서와 기존 허용값을 유지해야 합니다.");
+        });
+        require(diagnostics.contains("NumberFormatException"), "손상 숫자 행은 진단을 남기고 다음 정상 행을 읽어야 합니다.");
+        require(Files.readString(file).equals(content), "기록 조회가 원본 파일을 정리하거나 변경하면 안 됩니다.");
+    }
+
+    private static void scoreRefresh() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        Files.writeString(file, "Alice:200\nBob:100\n");
+        try (GameFixture fixture = new GameFixture()) {
+            Scoreboardpanel panel = new Scoreboardpanel(fixture.owner);
+            saveViaGame(fixture.game, "New", 300);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows("New: 300", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
+            resetViaMenu(fixture.owner);
+            panel.drawScore();
+            require(Files.size(file) == 0 && scoreText(panel).equals(rankingRows()), "초기화 후 이전 목록이 캐시에 남으면 안 됩니다.");
+            saveViaGame(fixture.game, "After", 7);
+            panel.drawScore();
+            require(scoreText(panel).equals(rankingRows("After: 7")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
+        }
+    }
+
+    private static void scoreIoDiagnostics() throws Exception {
+        Path file = Path.of("tetris_score.txt"), marker = file.resolve("keep.txt");
+        Files.createDirectory(file);
+        Files.writeString(marker, "untouched");
+        try (GameFixture fixture = new GameFixture()) {
+            String read = captureErrors(() -> require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows()),
+                "읽기 실패는 기존처럼 빈 순위를 표시해야 합니다."));
+            String append = captureErrors(() -> saveViaGame(fixture.game, "Failed", 1));
+            String clear = captureErrors(() -> resetViaMenu(fixture.owner));
+            for (String diagnostics : List.of(read, append, clear)) require(diagnostics.contains("Exception"),
+                "파일 IO 실패는 stacktrace 진단을 남겨야 합니다.");
+            require(Files.isDirectory(file) && Files.readString(marker).equals("untouched"), "실패 시 기존 디렉터리와 내용을 삭제하면 안 됩니다.");
+            Files.delete(marker);
+            Files.delete(file);
+            byte[] invalid = {(byte) 0xc3, 0x28};
+            Files.write(file, invalid);
+            String encoding = captureErrors(() -> require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows()),
+                "손상된 UTF-8도 기존 읽기 실패 경로를 유지해야 합니다."));
+            require(encoding.contains("MalformedInputException") && Arrays.equals(Files.readAllBytes(file), invalid),
+                "인코딩 오류 진단을 유지하고 원본 바이트를 변경하면 안 됩니다.");
+        }
+    }
+
+    private static void scoreStoreDirect() throws Exception {
+        Path file = Path.of("tetris_score.txt");
+        require(ScoreStore.readRanked().isEmpty() && !Files.exists(file), "저장소 직접 조회도 누락 파일을 만들면 안 됩니다.");
+        for (int i = 0; i < 12; i++) ScoreStore.append("P" + i, i * 10);
+        List<ScoreStore.Score> first = ScoreStore.readRanked();
+        require(first.size() == 12 && first.get(0).equals(new ScoreStore.Score("P11", 110))
+                && first.get(11).equals(new ScoreStore.Score("P0", 0)), "저장소는 상위 10개 표시와 독립적으로 전체 정상 기록을 정렬해야 합니다.");
+        first.clear();
+        require(ScoreStore.readRanked().size() == 12, "반환 목록 변경이 파일이나 다음 조회를 바꾸면 안 됩니다.");
+        ScoreStore.clear();
+        require(Files.size(file) == 0 && ScoreStore.readRanked().isEmpty(), "직접 초기화도 파일을 비우고 최신 결과를 반환해야 합니다.");
+        ScoreStore.append("After", 5);
+        require(ScoreStore.readRanked().equals(List.of(new ScoreStore.Score("After", 5))), "초기화 후 저장에도 과거 기록이 남으면 안 됩니다.");
     }
 
     private static void scoreReset() throws Exception {
