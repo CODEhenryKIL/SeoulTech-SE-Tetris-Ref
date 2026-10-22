@@ -21,8 +21,8 @@ public class Settingpanel extends JPanel{
     - OptionButton(Option 이름, Option 내용(없을 시 null 전달))
     2. proteced void isPressed() 오버라이딩 하기
     - 버튼이 눌렸을 때 발생되는 이벤트 함수를 구현하기.
-    3. 스태틱 함수 OptionButton.addButton(JPanel parent, OptionButton child)으로 버튼 등록하기
-    - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (최대 10개 등록 가능)
+    3. 해당 화면의 menu.add(JPanel parent, OptionButton child)로 버튼 등록하기
+    - 버튼이 등록되는 건 추가되는 순서대로 추가됩니다. (기존 동작 유지: 최대 11개 등록 가능)
 
     기존의 등록 방식을 변경하여 위의 흐름대로만 설정하면 작동할 수 있도록 변경하였습니다.
     기본적으로 OptionButton은 JPanel을 상속하므로, JPanel이 가지는 메소드도 전부 사용 가능합니다.
@@ -39,6 +39,7 @@ public class Settingpanel extends JPanel{
     private PlayerKeyListener playerKeyListener;
     private int HEIGHT;
     private int WIDTH;
+    private final MenuButtons<OptionButton> menu = new MenuButtons<>();
 
     public Settingpanel(Maincontainer maincontainer) {
         this.maincontainer = maincontainer;
@@ -58,16 +59,14 @@ public class Settingpanel extends JPanel{
         GridBagConstraints gbc = new GridBagConstraints();
         gbc.insets = new Insets(10, 10, 10, 10);
 
-            OptionButton.resetStaticField();
             // 테트리스 게임 화면의 크기를 조절 - 최소 3가지 이상 미리 정의된 크기.
-            windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting()) {
+            windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.getWindowSize()) {
                 @Override
                 protected void isPressed() {
-                    maincontainer.setting.currentSettingMap.get("windowSize").changeSetting();
-                    option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
+                    option.setText(maincontainer.setting.nextWindowSize());
                 }
             };
-            OptionButton.addButton(settingPanel, windowSizeOption);
+            menu.add(settingPanel, windowSizeOption);
             // 게임 조작을 위해 사용될 키를 설정
             keySettingOption = new OptionButton("Change Keys", null) {
                 @Override 
@@ -83,7 +82,7 @@ public class Settingpanel extends JPanel{
                     changeKeyPanel.requestFocusInWindow();
                 }
             };
-            OptionButton.addButton(settingPanel, keySettingOption);
+            menu.add(settingPanel, keySettingOption);
             // 스코어 보드의 기록을 초기화
             resetScoreOption = new OptionButton("Reset Scoreboard", null) {
                 @Override
@@ -96,28 +95,27 @@ public class Settingpanel extends JPanel{
                     }
                 }
             };
-            OptionButton.addButton(settingPanel, resetScoreOption);
+            menu.add(settingPanel, resetScoreOption);
             // 색맹 모드 켜고 끄기.
-            colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting()) {
+            colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.getColorPalette()) {
                 @Override 
                 protected void isPressed() {
-                    maincontainer.setting.currentSettingMap.get("colorBlind").changeSetting();
-                    option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
+                    option.setText(maincontainer.setting.nextColorPalette());
                 }
             };
-            OptionButton.addButton(settingPanel, colorBlindOption);
+            menu.add(settingPanel, colorBlindOption);
             //모든 설정으로 기본 설정으로 되돌리기.
             resetSettingOption = new OptionButton("Reset setting", null) {
                 @Override 
                 protected void isPressed() {
                     maincontainer.setting.clearSetting();
-                    windowSizeOption.option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
-                    colorBlindOption.option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
+                    windowSizeOption.option.setText(maincontainer.setting.getWindowSize());
+                    colorBlindOption.option.setText(maincontainer.setting.getColorPalette());
                     Settingpanel.this.revalidate();
                     Settingpanel.this.repaint();
                 }
             };
-            OptionButton.addButton(settingPanel, resetSettingOption);
+            menu.add(settingPanel, resetSettingOption);
 
         add(settingPanel);
 
@@ -131,7 +129,7 @@ public class Settingpanel extends JPanel{
         panelWidth = (int) exitButton.getPreferredSize().getWidth();
         panelHeight = (int) exitButton.getPreferredSize().getHeight();
         exitButton.setBounds((WIDTH-panelWidth)/2, (3*(HEIGHT-20)/4+10)+((HEIGHT-10)-(3*(HEIGHT-20)/4+10)-panelHeight)/2, panelWidth, panelHeight);
-        OptionButton.addButton(this, exitButton);
+        menu.add(this, exitButton);
 
         playerKeyListener = new PlayerKeyListener();
 		addKeyListener(playerKeyListener);
@@ -163,37 +161,34 @@ public class Settingpanel extends JPanel{
 	}
 
     private void selectUp() {
-        OptionButton.getSelectedButton().setOpaque(false);
-        OptionButton.reduceCurrentSelected();
-        OptionButton.getSelectedButton().setOpaque(true);
+        menu.move(-1);
         this.revalidate();
         this.repaint();
         return;
     }
 
     private void selectDown() {
-        OptionButton.getSelectedButton().setOpaque(false);
-        OptionButton.addCurrentSelected();
-        OptionButton.getSelectedButton().setOpaque(true);
+        menu.move(1);
         this.revalidate();
         this.repaint();
         return;
     }
 
     private void selectEnter() {
-        OptionButton.getSelectedButton().isPressed();
+        menu.selected().isPressed();
     }
 
     private class ChangeKeyPanel extends JPanel {
 
-        private ChangeKeyButton rotateOption;
-        private ChangeKeyButton downOption;
-        private ChangeKeyButton leftOption;
-        private ChangeKeyButton rightOption;
-        private ChangeKeyButton pauseOption;
-        private ChangeKeyButton hardDropOption;
-        private ChangeKeyButton exitOption;
+        private OptionButton rotateOption;
+        private OptionButton downOption;
+        private OptionButton leftOption;
+        private OptionButton rightOption;
+        private OptionButton pauseOption;
+        private OptionButton hardDropOption;
+        private OptionButton exitOption;
         private Integer[] currentKey;
+        private final MenuButtons<OptionButton> keyMenu = new MenuButtons<>();
         private PlayerKeyListener2 keylistener2;
          
         public ChangeKeyPanel() {
@@ -204,69 +199,60 @@ public class Settingpanel extends JPanel{
             add(keyList);
             keyList.setBounds(10, 10, settingPanel.getWidth(), settingPanel.getHeight());
             keyList.setLayout(new GridBagLayout());
-            String[] parts = maincontainer.setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
-            currentKey = new Integer[6];
-            for (int i = 0; i < 6; i++) currentKey[i] = Integer.parseInt(parts[i].split("=")[1]);
-            ChangeKeyButton.resetStaticField();
+            currentKey = maincontainer.setting.getKeyCodes();
 
-            rotateOption = new ChangeKeyButton("Rotate: ", KeyEvent.getKeyText(currentKey[0])) {
+            rotateOption = new OptionButton("Rotate: ", KeyEvent.getKeyText(currentKey[0])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, rotateOption);
+            keyMenu.add(keyList, rotateOption);
 
-            downOption = new ChangeKeyButton("Down: ", KeyEvent.getKeyText(currentKey[1])) {
+            downOption = new OptionButton("Down: ", KeyEvent.getKeyText(currentKey[1])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, downOption);
+            keyMenu.add(keyList, downOption);
 
-            leftOption = new ChangeKeyButton("Left: ", KeyEvent.getKeyText(currentKey[2])) {
+            leftOption = new OptionButton("Left: ", KeyEvent.getKeyText(currentKey[2])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, leftOption);
+            keyMenu.add(keyList, leftOption);
 
-            rightOption = new ChangeKeyButton("Right: ", KeyEvent.getKeyText(currentKey[3])) {
+            rightOption = new OptionButton("Right: ", KeyEvent.getKeyText(currentKey[3])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, rightOption);
+            keyMenu.add(keyList, rightOption);
 
-            pauseOption = new ChangeKeyButton("Pause: ", KeyEvent.getKeyText(currentKey[4])) {
+            pauseOption = new OptionButton("Pause: ", KeyEvent.getKeyText(currentKey[4])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, pauseOption);
+            keyMenu.add(keyList, pauseOption);
 
-            hardDropOption = new ChangeKeyButton("Hard Drop: ", KeyEvent.getKeyText(currentKey[5])) {
+            hardDropOption = new OptionButton("Hard Drop: ", KeyEvent.getKeyText(currentKey[5])) {
                 @Override 
                 protected void isPressed() {
-                    changeKey(index);
+                    changeKey(keyMenu.selectedIndex());
                 }
             };
-            ChangeKeyButton.addButton(keyList, hardDropOption);
+            keyMenu.add(keyList, hardDropOption);
 
-            exitOption = new ChangeKeyButton("Save and Exit", null) {
+            exitOption = new OptionButton("Save and Exit", null) {
                 @Override 
                 protected void isPressed() {
-                    String str = "ROTATE=" + currentKey[0] 
-                                + ",DOWN=" + currentKey[1] 
-                                + ",LEFT=" + currentKey[2] 
-                                + ",RIGHT=" + currentKey[3] 
-                                + ",PAUSE=" + currentKey[4] 
-                                + ",HARD_DROP=" + currentKey[5];
-                    Settingpanel.this.maincontainer.setting.currentSettingMap.get("keySetting").modifySetting(str);
+                    maincontainer.setting.updateKeyCodes(currentKey);
                     Settingpanel.this.removeKeyListener(keylistener2);
                     Settingpanel.this.addKeyListener(Settingpanel.this.playerKeyListener);
                     Settingpanel.this.remove(ChangeKeyPanel.this);
@@ -276,7 +262,7 @@ public class Settingpanel extends JPanel{
                     Settingpanel.this.requestFocusInWindow();
                 }
             };
-            ChangeKeyButton.addButton(keyList, exitOption);
+            keyMenu.add(keyList, exitOption);
 
             keylistener2 = new PlayerKeyListener2();
             this.addKeyListener(keylistener2);
@@ -308,23 +294,19 @@ public class Settingpanel extends JPanel{
         }
 
         private void selectDown() {
-            ChangeKeyButton.getSelectedButton().setOpaque(false);
-            ChangeKeyButton.addCurrentSelected();
-            ChangeKeyButton.getSelectedButton().setOpaque(true);
+            keyMenu.move(1);
             revalidate();
             repaint();
         }
 
         private void selectUp() {
-            ChangeKeyButton.getSelectedButton().setOpaque(false);
-            ChangeKeyButton.reduceCurrentSelected();
-            ChangeKeyButton.getSelectedButton().setOpaque(true);
+            keyMenu.move(-1);
             revalidate();
             repaint();
         }
 
         private void selectEnter() {
-            ChangeKeyButton.getSelectedButton().isPressed();
+            keyMenu.selected().isPressed();
         }
 
         private void changeKey(int idx) {
@@ -354,7 +336,7 @@ public class Settingpanel extends JPanel{
                     }
                     if (!Arrays.asList(currentKey).contains(newKey) || newKey == currentKey[idx]) {
                         currentKey[idx] = newKey;
-                        ChangeKeyButton.getSelectedButton().option.setText(keyName);
+                        keyMenu.selected().option.setText(keyName);
                         removeKeyListener(this);
                         addKeyListener(keylistener2);
                         Container parent = display.getParent();
@@ -374,87 +356,18 @@ public class Settingpanel extends JPanel{
             requestFocusInWindow();
         }
 
-        private class ChangeKeyButton extends JPanel {
 
-            protected JLabel text;
-            protected JLabel option;
-            protected int index = 0;
-            private static int numberOfOptions = 0;
-            private static int currentSelected = 0;
-            private static ArrayList<ChangeKeyButton> buttonList;
-
-            public ChangeKeyButton(String optionName, String optionContent) {
-                setLayout(new GridLayout(1, 0));
-                setBackground(changeColor(Color.GRAY));
-                if (numberOfOptions == 0) setOpaque(true);
-                else setOpaque(false);
-
-                text = new JLabel(optionName, SwingConstants.CENTER);
-                text.setFont(new Font("Courier", Font.BOLD, 16));
-                text.setForeground(changeColor(Color.BLACK));
-                add(text);
-                if (optionContent != null) {
-                    option = new JLabel(optionContent, SwingConstants.CENTER);
-                    option.setFont(new Font("Courier", Font.BOLD, 16));
-                    option.setForeground(changeColor(Color.BLACK));
-                    add(option);
-                }
-
-                Dimension labelSize = text.getPreferredSize();
-                int panelWidth = (optionContent != null) ? (labelSize.width * 2 + 20) : (labelSize.width + 20);
-                int panelHeight = labelSize.height + 20;
-                setPreferredSize(new Dimension(panelWidth, panelHeight));
-            }
-
-            protected void isPressed() {}
-
-            protected static void addButton(JPanel parent, ChangeKeyButton child) {
-                if (numberOfOptions > 10) return;
-                GridBagConstraints gbc = new GridBagConstraints();
-                gbc.gridx = 0; gbc.gridy = numberOfOptions; gbc.fill = GridBagConstraints.NONE;
-                parent.add(child, gbc);
-                child.index = numberOfOptions;
-                numberOfOptions++;
-                buttonList.add(child);
-            }
-
-            protected static void addCurrentSelected() {
-                if (currentSelected >= numberOfOptions - 1) {
-                    currentSelected = 0;
-                } else currentSelected++;
-            }
-
-            protected static void reduceCurrentSelected() {
-                if (currentSelected <= 0) {
-                    currentSelected = numberOfOptions - 1;
-                } else currentSelected--;
-            }
-
-            protected static ChangeKeyButton getSelectedButton() {
-                return buttonList.get(currentSelected);
-            }
-
-            protected static void resetStaticField() {
-                numberOfOptions = 0;
-                currentSelected = 0;
-                buttonList = new ArrayList<>();
-            }
-        }
     }
 
     private class OptionButton extends JPanel {
 
         protected JLabel text;
         protected JLabel option;
-        private static int numberOfOptions = 0;
-        private static int currentSelected = 0;
-        private static ArrayList<OptionButton> buttonList;
 
         public OptionButton(String optionName, String optionContent) {
             setLayout(new GridLayout(1, 0));
             setBackground(changeColor(Color.GRAY));
-            if (numberOfOptions == 0) setOpaque(true);
-            else setOpaque(false);
+            setOpaque(false);
 
             text = new JLabel(optionName, SwingConstants.CENTER);
             text.setFont(new Font("Courier", Font.BOLD, 16));
@@ -475,35 +388,5 @@ public class Settingpanel extends JPanel{
 
         protected void isPressed() {}
 
-        protected static void addButton(JPanel parent, OptionButton child) {
-            if (numberOfOptions > 10) return;
-            GridBagConstraints gbc = new GridBagConstraints();
-            gbc.gridx = 0; gbc.gridy = numberOfOptions; gbc.fill = GridBagConstraints.NONE;
-            parent.add(child, gbc);
-            numberOfOptions++;
-            buttonList.add(child);
-        }
-
-        protected static void addCurrentSelected() {
-            if (currentSelected >= numberOfOptions - 1) {
-                currentSelected = 0;
-            } else currentSelected++;
-        }
-
-        protected static void reduceCurrentSelected() {
-            if (currentSelected <= 0) {
-                currentSelected = numberOfOptions - 1;
-            } else currentSelected--;
-        }
-
-        protected static OptionButton getSelectedButton() {
-            return buttonList.get(currentSelected);
-        }
-
-        protected static void resetStaticField() {
-            numberOfOptions = 0;
-            currentSelected = 0;
-            buttonList = new ArrayList<>();
-        }
     }
 }

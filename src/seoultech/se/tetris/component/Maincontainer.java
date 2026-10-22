@@ -63,13 +63,8 @@ public class Maincontainer extends JFrame{
         gamePanel.requestFocusInWindow();
     }
     protected void exitGameEnterStart() {
-        startPanel = new Startpanel(this);
-        mainPanel.add(startPanel, "StartScreen");
         if (gamePanel != null && gamePanel.getParent() != null) mainPanel.remove(gamePanel);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
     // Setting 버튼 상호작용 함수
     protected void exitStartEnterSetting() {
@@ -82,16 +77,10 @@ public class Maincontainer extends JFrame{
         settingPanel.requestFocusInWindow();
     }
     protected void exitSettingEnterStart() {
-        startPanel = new Startpanel(this);
         mainPanel.remove(settingPanel);
-        remove(mainPanel); // GC 발생
+        remove(mainPanel);
         applySetting();
-        mainPanel.add(startPanel, "StartScreen");
-        mainPanel.setComponentZOrder(startPanel, 0);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        //cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
     // Scoreboard 버튼 상호작용 함수
     protected void exitStartEnterScoreboard() {
@@ -104,23 +93,16 @@ public class Maincontainer extends JFrame{
         scoreboardPanel.requestFocusInWindow();
     }
     protected void exitScoreboardEnterStart() {
-        startPanel = new Startpanel(this);
-        mainPanel.add(startPanel, "StartScreen");
         mainPanel.remove(scoreboardPanel);
-        mainPanel.revalidate();
-        mainPanel.repaint();
-        cardLayout.show(mainPanel, "StartScreen");
-        startPanel.requestFocusInWindow();
+        enterStart();
     }
 
     private void applySetting() {
-        String[] h_w = setting.currentSettingMap.get("windowSize").getCurrentSetting().split("X");
+        String[] h_w = setting.getWindowSize().split("X");
         HEIGHT = Integer.parseInt(h_w[0]); WIDTH = Integer.parseInt(h_w[1]);
-        String[] parts = setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
-        Integer[] keys = new Integer[6];
-        for (int i = 0; i < 6; i++) keys[i] = Integer.parseInt(parts[i].split("=")[1]);
+        Integer[] keys = setting.getKeyCodes();
         ROTATE = keys[0]; DOWN = keys[1]; LEFT = keys[2]; RIGHT = keys[3]; PAUSE = keys[4]; HARD_DROP = keys[5];
-        colorPalette = setting.currentSettingMap.get("colorBlind").getCurrentSetting();
+        colorPalette = setting.getColorPalette();
         
         // container에 띄우기 위한 빈 panel
         mainPanel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
@@ -185,10 +167,11 @@ public class Maincontainer extends JFrame{
         - 설정의 이름이 될 값을 String으로 지정해야 합니다.
         - 설정의 초기값이 될 값을 ArrayList<String> 목록의 가장 처음으로 할당해야 합니다.
         - 설정 변경은 항상 ArrayList<>에 담긴 순서대로 변경됩니다.
-        2. key와 관련된 값은 기존에 쓰던 별도의 메소드를 그대로 사용
-        - 만약 추가나 변경이 필요할 경우, isValidKeySetting()을 고쳐주시길 바랍니다.
+        2. 키 배열은 getKeyCodes()/updateKeyCodes()로 읽고 저장
+        - 키 항목을 추가할 때는 KEY_NAMES, 기본값, 파일 검증과 화면 항목을 함께 확인합니다.
         */
-        protected LinkedHashMap<String, SettingComponent> currentSettingMap;
+        private static final String[] KEY_NAMES = {"ROTATE", "DOWN", "LEFT", "RIGHT", "PAUSE", "HARD_DROP"};
+        private LinkedHashMap<String, SettingComponent> currentSettingMap;
         private static final LinkedHashMap<String, ArrayList<String>> validSettingMap = new LinkedHashMap<>(Map.of(
             "windowSize", new ArrayList<>(List.of("600X500","750X625","900X750")),
             "keySetting", new ArrayList<>(List.of("ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32")),
@@ -200,6 +183,52 @@ public class Maincontainer extends JFrame{
             currentSettingMap = new LinkedHashMap<>();
             clearSetting();
             decodeSetting();
+        }
+
+        protected String getWindowSize() {
+            return currentSettingMap.get("windowSize").getCurrentSetting();
+        }
+
+        protected String nextWindowSize() {
+            currentSettingMap.get("windowSize").changeSetting();
+            return getWindowSize();
+        }
+
+        protected String getColorPalette() {
+            return currentSettingMap.get("colorBlind").getCurrentSetting();
+        }
+
+        protected String nextColorPalette() {
+            currentSettingMap.get("colorBlind").changeSetting();
+            return getColorPalette();
+        }
+
+        // 문자열에서 새 배열을 만들므로 화면의 편집이 저장된 값에 전파되지 않는다.
+        protected Integer[] getKeyCodes() {
+            return parseKeyCodes(currentSettingMap.get("keySetting").getCurrentSetting());
+        }
+
+        protected void updateKeyCodes(Integer[] keys) {
+            StringBuilder value = new StringBuilder();
+            for (int i = 0; i < KEY_NAMES.length; i++) {
+                if (i > 0) value.append(',');
+                value.append(KEY_NAMES[i]).append('=').append(keys[i]);
+            }
+            currentSettingMap.get("keySetting").modifySetting(value.toString());
+        }
+
+        private Integer[] parseKeyCodes(String value) {
+            String[] parts = value.split(",", -1);
+            if (parts.length != KEY_NAMES.length) throw new IllegalArgumentException("Expected six key bindings");
+            Integer[] keys = new Integer[KEY_NAMES.length];
+            for (int i = 0; i < KEY_NAMES.length; i++) {
+                String[] keyValue = parts[i].split("=", -1);
+                if (keyValue.length != 2 || !keyValue[0].equals(KEY_NAMES[i])) {
+                    throw new IllegalArgumentException("Unexpected key binding: " + parts[i]);
+                }
+                keys[i] = Integer.parseInt(keyValue[1]);
+            }
+            return keys;
         }
 
         private void decodeSetting() {
@@ -215,9 +244,9 @@ public class Maincontainer extends JFrame{
                             String value = tokens[1].trim();
                             if (!currentSettingMap.containsKey(key)) continue;
                             if (key.equals("keySetting")) {
-                                if (isValidKeySetting(value)) currentSettingMap.get(key).modifySetting(value);;
+                                if (isValidKeySetting(value)) currentSettingMap.get(key).modifySetting(value);
                             } else {
-                                currentSettingMap.get(key).findApplySetting(value);;
+                                currentSettingMap.get(key).findApplySetting(value);
                             }
                         }
                     }
@@ -228,23 +257,16 @@ public class Maincontainer extends JFrame{
         }
 
         private boolean isValidKeySetting(String value) {
-            String[] expectedKeys = {"ROTATE", "DOWN", "LEFT", "RIGHT", "PAUSE", "HARD_DROP"};
-            String[] parts = value.split(",", -1);
-            if (parts.length != expectedKeys.length) return false;
-
-            int[] keyCodes = new int[expectedKeys.length];
             try {
-                for (int i = 0; i < expectedKeys.length; i++) {
-                    String[] keyValue = parts[i].split("=", -1);
-                    if (keyValue.length != 2 || !keyValue[0].equals(expectedKeys[i])) return false;
-                    keyCodes[i] = Integer.parseInt(keyValue[1]);
+                Integer[] keyCodes = parseKeyCodes(value);
+                for (int i = 0; i < keyCodes.length; i++) {
                     if (keyCodes[i] <= 0) return false;
                     if (i == 4 && keyCodes[i] == KeyEvent.VK_ENTER) return false; //TODO? 엔터키를 하드드롭에도 금지시켜야하나요?
                     for (int j = 0; j < i; j++) {
-                        if (keyCodes[i] == keyCodes[j]) return false;
+                        if (keyCodes[i].equals(keyCodes[j])) return false;
                     }
                 }
-            } catch (NumberFormatException e) {
+            } catch (IllegalArgumentException e) {
                 return false;
             }
             return true;

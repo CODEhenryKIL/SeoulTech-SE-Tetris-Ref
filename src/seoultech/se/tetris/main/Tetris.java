@@ -6,7 +6,6 @@ public class Tetris {
 
 	public static void main(String[] args) {
 		Maincontainer maincontainer = new Maincontainer();
-		maincontainer.setVisible(true);
 		maincontainer.enterStart();
 	}
 }
