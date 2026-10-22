@@ -21,6 +21,7 @@ import javax.swing.border.CompoundBorder;
 
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockGenerator;
+import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
 	private static final long serialVersionUID = 2434035659171694595L;
@@ -145,36 +146,15 @@ public class Board extends JComponent {
 	}
 
 	protected boolean canDown(int x, int y) {
-		if(y < HEIGHT - curr.height()) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j+1][x+i]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canDown(board, curr, x, y);
 	}
 
 	protected boolean canRight() {
-		if(x < WIDTH - curr.width()) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j][x+i+1]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canRight(board, curr, x, y);
 	}
 
 	protected boolean canLeft() {
-		if(x > 0) {
-			for(int j=0; j<curr.height(); j++) {
-				for(int i=0; i<curr.width(); i++) {
-					if ((curr.getShape(i, j) + board[y+j][x+i-1]) > 1) return false;
-				}
-			}
-			return true;
-		} else return false;
+		return CollisionRules.canLeft(board, curr, x, y);
 	}
 
 	protected boolean canRotate() {
@@ -182,25 +162,7 @@ public class Board extends JComponent {
 	}
 
 	private int[] rotationPosition() {
-		int rotatedWidth = curr.height();
-		int rotatedHeight = curr.width();
-		int rotatedX = Math.min(x, WIDTH - rotatedWidth);
-		int startY = Math.min(y, HEIGHT - rotatedHeight);
-
-		for (int rotatedY = startY; rotatedY >= Math.max(0, startY - rotatedHeight); rotatedY--) {
-			boolean clear = true;
-			for (int row = 0; row < curr.height() && clear; row++) {
-				for (int col = 0; col < curr.width(); col++) {
-					if (curr.getShape(col, row) > 0
-							&& board[rotatedY + col][rotatedX + curr.height() - row - 1] != 0) {
-						clear = false;
-						break;
-					}
-				}
-			}
-			if (clear) return new int[] {rotatedX, rotatedY};
-		}
-		return null;
+		return CollisionRules.rotationPosition(board, curr, x, y);
 	}
 
 	protected boolean moveDown() {

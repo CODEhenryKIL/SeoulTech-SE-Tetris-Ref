@@ -24,6 +24,7 @@ import javax.swing.JTextPane;
 import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import seoultech.se.tetris.blocks.*;
+import seoultech.se.tetris.rules.CollisionRules;
 import sun.misc.Unsafe;
 
 /**
@@ -82,6 +83,10 @@ public final class RefactoringRegressionTest {
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
         new Check("block-generation-lifecycle", "시작의 두 블록 생성·난수 소비와 게임판 간 생성 독립성", RefactoringRegressionTest::blockGenerationLifecycle),
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
+        new Check("collision-boundaries", "7종·4회전의 벽·바닥·고정 블록과 빈 칸 판정", RefactoringRegressionTest::collisionBoundaries),
+        new Check("rotation-boundaries", "회전 좌표 보정·위쪽 탐색 순서와 범위·상단·빈 칸", RefactoringRegressionTest::rotationBoundaries),
+        new Check("collision-query-purity", "판정 시 활성 블록 포함 여부에 관계없이 격자·블록·좌표 불변", RefactoringRegressionTest::collisionQueryPurity),
+        new Check("collision-rules-direct", "화면·타이머 없는 직접 판정과 좌표 결과의 독립성", RefactoringRegressionTest::collisionRulesDirect),
         new Check("blocked-rotation", "막힌 회전의 좌표·모양 유지", RefactoringRegressionTest::blockedRotation),
         new Check("hard-drop", "하드드롭 위치·점수·다음 블록 승계", RefactoringRegressionTest::hardDrop),
         new Check("drop-input-score", "자동·수동 낙하와 하드드롭의 기존 점수·이동", RefactoringRegressionTest::dropInputScore),
@@ -721,6 +726,137 @@ public final class RefactoringRegressionTest {
             require(board.x == 3 && board.y == 4 && shape(current).equals(before), "막힌 회전은 좌표·모양을 유지해야 합니다.");
             for (int[] row : cells(board)) for (int cell : row) require(cell <= 1, "회전 후 블록 중첩이 없어야 합니다.");
         }
+    }
+
+    private static void collisionBoundaries() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (Block block : blocks()) for (int rotation = 0; rotation < 4; rotation++) {
+                prepare(board, block, 0, 5);
+                board.moveLeft();
+                require(board.x == 0, "모든 종류·회전에서 왼쪽 벽을 통과하면 안 됩니다.");
+                int right = 10 - block.width(), bottom = 20 - block.height();
+                prepare(board, block, right, 5);
+                board.moveRight();
+                require(board.x == right, "모든 종류·회전에서 오른쪽 벽을 통과하면 안 됩니다.");
+                prepare(board, block, 3, bottom);
+                call(board, "eraseCurr");
+                require(!board.canDown(3, bottom), "모든 종류·회전에서 바닥 아래로 내려가면 안 됩니다.");
+                for (int[] direction : new int[][] {{-1, 0}, {1, 0}, {0, 1}}) {
+                    prepare(board, block, 3, 5);
+                    call(board, "eraseCurr");
+                    require(canMove(board, direction), "빈 공간에서 이동을 허용해야 합니다.");
+                    boolean occupiedChecked = false, holeChecked = false;
+                    for (int row = 0; row < block.height(); row++) for (int col = 0; col < block.width(); col++) {
+                        int x = 3 + col + direction[0], y = 5 + row + direction[1];
+                        if (block.getShape(col, row) > 0 && !occupiedChecked) {
+                            cells(board)[y][x] = 1;
+                            require(!canMove(board, direction), "이동할 자리에 고정 블록이 있으면 거부해야 합니다.");
+                            cells(board)[y][x] = 0;
+                            occupiedChecked = true;
+                        } else if (block.getShape(col, row) == 0 && !holeChecked) {
+                            cells(board)[y][x] = 1;
+                            require(canMove(board, direction), "블록 모양의 빈 칸에만 장애물이 있으면 이동을 허용해야 합니다.");
+                            cells(board)[y][x] = 0;
+                            holeChecked = true;
+                        }
+                    }
+                }
+                block.rotate();
+            }
+        }
+    }
+
+    private static boolean canMove(Board board, int[] direction) {
+        return direction[0] < 0 ? board.canLeft() : direction[0] > 0 ? board.canRight() : board.canDown(board.x, board.y);
+    }
+
+    private static void rotationBoundaries() throws Exception {
+        IBlock vertical = new IBlock();
+        vertical.rotate();
+        record RotationCase(Block block, int x, int y, int[][] obstacles, int[] expected) {}
+        List<RotationCase> cases = List.of(
+            new RotationCase(vertical, 9, 5, new int[0][], new int[] {6, 5}),
+            new RotationCase(new IBlock(), 3, 19, new int[0][], new int[] {3, 16}),
+            new RotationCase(new IBlock(), 3, 5, new int[][] {{3, 6}}, new int[] {3, 2}),
+            new RotationCase(new IBlock(), 3, 5, new int[][] {{3, 4}, {3, 6}}, null),
+            new RotationCase(new IBlock(), 3, 0, new int[][] {{3, 1}}, null),
+            new RotationCase(new TBlock(), 3, 5, new int[][] {{4, 7}}, new int[] {3, 5})
+        );
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (RotationCase scenario : cases) {
+                prepare(board, scenario.block(), scenario.x(), scenario.y());
+                call(board, "eraseCurr");
+                for (int[] cell : scenario.obstacles()) fixedCell(board, cell[0], cell[1]);
+                String grid = Arrays.deepToString(cells(board)), originalShape = shape(scenario.block());
+                int[] result = (int[]) call(board, "rotationPosition");
+                require(Arrays.equals(result, scenario.expected()), "기존 회전 좌표·후보 우선순위와 탐색 한계를 유지해야 합니다.");
+                require(grid.equals(Arrays.deepToString(cells(board))) && originalShape.equals(shape(scenario.block())),
+                    "회전 좌표 계산은 격자와 블록을 수정하면 안 됩니다.");
+                require(board.canRotate() == (result != null), "회전 허용 여부와 좌표 계산 결과가 일치해야 합니다.");
+                call(board, "placeBlock");
+                String placed = Arrays.deepToString(cells(board));
+                board.rotate();
+                if (result == null) {
+                    require(board.x == scenario.x() && board.y == scenario.y()
+                            && originalShape.equals(shape(scenario.block())) && placed.equals(Arrays.deepToString(cells(board))),
+                        "회전 후보가 없으면 좌표·모양·격자를 유지해야 합니다.");
+                } else {
+                    require(board.x == result[0] && board.y == result[1], "계산된 첫 유효 회전 좌표를 적용해야 합니다.");
+                    require(Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 4 + scenario.obstacles().length,
+                        "회전 후 블록 네 칸과 기존 장애물을 겹침 없이 유지해야 합니다.");
+                }
+            }
+        }
+    }
+
+    private static void collisionQueryPurity() throws Exception {
+        try (GameFixture fixture = new GameFixture()) {
+            Board board = fixture.board;
+            for (Block block : blocks()) for (int rotation = 0; rotation < 4; rotation++) {
+                for (boolean activeIncluded : new boolean[] {true, false}) {
+                    prepare(board, block, 3, 5);
+                    if (!activeIncluded) call(board, "eraseCurr");
+                    fixedCell(board, 9, 19);
+                    int[][] grid = cells(board);
+                    Object chunks = get(board, "textChunks");
+                    String beforeGrid = Arrays.deepToString(grid), beforeShape = shape(block);
+                    int score = board.getScore();
+                    boolean left = board.canLeft(), right = board.canRight(), down = board.canDown(3, 5);
+                    int[] position = (int[]) call(board, "rotationPosition");
+                    require(left == board.canLeft() && right == board.canRight() && down == board.canDown(3, 5)
+                            && Arrays.equals(position, (int[]) call(board, "rotationPosition")), "같은 입력의 판정은 반복해도 같아야 합니다.");
+                    require(cells(board) == grid && beforeGrid.equals(Arrays.deepToString(grid))
+                            && beforeShape.equals(shape(block)) && get(board, "curr") == block
+                            && board.x == 3 && board.y == 5 && board.getScore() == score && get(board, "textChunks") == chunks,
+                        "활성 블록 포함 여부에 관계없이 입력 격자·블록·좌표·표시를 수정/정규화하면 안 됩니다.");
+                }
+                block.rotate();
+            }
+        }
+    }
+
+    private static void collisionRulesDirect() {
+        int[][] grid = new int[4][6];
+        Block block = new OBlock();
+        require(CollisionRules.canLeft(grid, block, 4, 2)
+                && !CollisionRules.canRight(grid, block, 4, 2)
+                && !CollisionRules.canDown(grid, block, 4, 2), "판정 경계는 전달된 직사각형 격자 크기를 따라야 합니다.");
+        int[] position = CollisionRules.rotationPosition(grid, block, 4, 2);
+        require(Arrays.equals(position, new int[] {4, 2}), "빈 격자에서 O블록은 제자리 회전할 수 있어야 합니다.");
+        position[0] = 99;
+        require(Arrays.equals(CollisionRules.rotationPosition(grid, block, 4, 2), new int[] {4, 2}),
+            "반환 좌표를 수정해도 다음 판정에 영향을 주면 안 됩니다.");
+        grid[2][3] = 1;
+        String before = Arrays.deepToString(grid), initialShape = shape(block);
+        require(!CollisionRules.canLeft(grid, block, 4, 2), "작은 격자에서도 고정 블록 충돌을 판정해야 합니다.");
+        require(before.equals(Arrays.deepToString(grid)) && initialShape.equals(shape(block)), "직접 판정은 입력을 수정하면 안 됩니다.");
+        Block line = new IBlock();
+        int[][] blocked = new int[20][10];
+        blocked[4][3] = blocked[6][3] = 1;
+        require(CollisionRules.rotationPosition(blocked, line, 3, 5) == null,
+            "직접 판정에서도 기존 위쪽 탐색 범위 밖으로 우회하면 안 됩니다.");
     }
 
     private static void hardDrop() throws Exception {
