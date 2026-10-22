@@ -71,6 +71,12 @@ public final class RefactoringRegressionTest {
         new Check("reset-settings", "사용자 설정을 기본값으로 복원·저장", RefactoringRegressionTest::resetSettings),
         new Check("unknown-setting", "모르는 설정을 무시하고 정상 설정 유지", RefactoringRegressionTest::unknownSetting),
         new Check("settings-isolation", "설정 인스턴스와 기본값 간 독립성", RefactoringRegressionTest::settingsIsolation),
+        new Check("key-file-validation", "정상·손상·5키 파일의 기존 허용 및 거절 규칙", RefactoringRegressionTest::keyFileValidation),
+        new Check("key-file-round-trip", "허용되는 키 문자열의 원형 유지와 여섯 키 재로드", RefactoringRegressionTest::keyFileRoundTrip),
+        new Check("key-edit-staging", "키 편집·서브메뉴 저장·파일 저장의 시점 분리", RefactoringRegressionTest::keyEditStaging),
+        new Check("setting-option-cycle", "창 크기·색상 전체 순환 및 저장·재로드", RefactoringRegressionTest::settingOptionCycle),
+        new Check("setting-file-boundaries", "누락·빈 파일·알 수 없는 값·공백 처리", RefactoringRegressionTest::settingFileBoundaries),
+        new Check("key-array-ownership", "설정 조회·저장 배열과 내부 값의 독립성", RefactoringRegressionTest::keyArrayOwnership),
         new Check("block-initialization", "7종 블록의 초기 모양 전체·색상", RefactoringRegressionTest::blockInitialization),
         new Check("block-rotation", "7종 블록의 칸 수·색·시계 방향 회전", RefactoringRegressionTest::blockRotation),
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
@@ -429,12 +435,127 @@ public final class RefactoringRegressionTest {
     private static void settingsIsolation() throws Exception {
         Maincontainer owner = owner("");
         Maincontainer.Setting original = owner.setting;
-        original.currentSettingMap.get("keySetting").modifySetting(CUSTOM_KEYS);
+        original.updateKeyCodes(new Integer[] {87, 40, 37, 39, 80, 32});
         Maincontainer.Setting other = owner.new Setting();
         require(value(other, "keySetting").equals(DEFAULT_KEYS), "다른 설정 인스턴스로 사용자 키가 전파되면 안 됩니다.");
         require(value(original, "keySetting").equals(CUSTOM_KEYS), "새 인스턴스가 기존 사용자 키를 바꾸면 안 됩니다.");
         original.clearSetting();
         require(value(original, "keySetting").equals(DEFAULT_KEYS), "기본값 목록이 오염되면 안 됩니다.");
+    }
+
+    private static void keyFileValidation() throws Exception {
+        List<String> invalid = List.of(
+            "", DEFAULT_KEYS.substring(0, DEFAULT_KEYS.lastIndexOf(',')),
+            DEFAULT_KEYS + ",EXTRA=65", DEFAULT_KEYS + ",", DEFAULT_KEYS.replace(",DOWN", ",,DOWN"),
+            DEFAULT_KEYS.replace("ROTATE=38", "TURN=38"),
+            DEFAULT_KEYS.replace("ROTATE=38,DOWN=40", "DOWN=40,ROTATE=38"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE="),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=38=65"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=abc"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=2147483648"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=0"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=-1"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE= 38"),
+            DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=40"),
+            DEFAULT_KEYS.replace("PAUSE=80", "PAUSE=10"));
+        for (String keys : invalid) {
+            Maincontainer owner = owner("windowSize:900X750\ncolorBlind:Tritanopia\nkeySetting:" + keys + "\n");
+            require(value(owner.setting, "keySetting").equals(DEFAULT_KEYS), "잘못된 키 파일은 기본 키를 유지해야 합니다: " + keys);
+            require(value(owner.setting, "windowSize").equals("900X750")
+                    && value(owner.setting, "colorBlind").equals("Tritanopia"), "잘못된 키가 다른 정상 설정을 지우면 안 됩니다.");
+        }
+        Maincontainer owner = owner("keySetting:" + CUSTOM_KEYS + "\nkeySetting:broken\n");
+        require(value(owner.setting, "keySetting").equals(CUSTOM_KEYS), "뒤의 잘못된 줄이 앞의 정상 키를 덮어쓰면 안 됩니다.");
+    }
+
+    private static void keyFileRoundTrip() throws Exception {
+        for (String keys : List.of(CUSTOM_KEYS,
+                "ROTATE=65,DOWN=83,LEFT=68,RIGHT=70,PAUSE=71,HARD_DROP=72",
+                DEFAULT_KEYS.replace("HARD_DROP=32", "HARD_DROP=10"),
+                DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=+0038"))) {
+            Maincontainer owner = owner("keySetting:" + keys + "\n");
+            require(value(owner.setting, "keySetting").equals(keys), "허용된 파일의 키 문자열을 임의로 변경하면 안 됩니다.");
+            owner.setting.exportSetting();
+            require(value(owner.new Setting(), "keySetting").equals(keys), "저장·재로드 후 허용된 키 문자열이 유지되어야 합니다.");
+            Settingpanel settings = new Settingpanel(owner);
+            press(settings, KeyEvent.VK_DOWN);
+            press(settings, KeyEvent.VK_ENTER);
+            Integer[] actual = (Integer[]) get(keyPanel(settings), "currentKey");
+            String[] parts = keys.split(",");
+            for (int i = 0; i < parts.length; i++) {
+                require(actual[i] == Integer.parseInt(parts[i].split("=")[1]), "여섯 키의 순서와 번호를 보존해야 합니다.");
+            }
+        }
+    }
+
+    private static void keyEditStaging() throws Exception {
+        Maincontainer owner = owner("keySetting:" + DEFAULT_KEYS + "\n");
+        byte[] originalFile = Files.readAllBytes(Path.of("setting.txt"));
+        Settingpanel settings = new Settingpanel(owner);
+        press(settings, KeyEvent.VK_DOWN);
+        press(settings, KeyEvent.VK_ENTER);
+        JPanel keys = keyPanel(settings);
+        press(keys, KeyEvent.VK_ENTER);
+        press(keys, KeyEvent.VK_A);
+        require(value(owner.setting, "keySetting").equals(DEFAULT_KEYS), "편집 중에는 저장된 키를 변경하면 안 됩니다.");
+        Settingpanel another = new Settingpanel(owner);
+        press(another, KeyEvent.VK_DOWN);
+        press(another, KeyEvent.VK_ENTER);
+        require(((Integer[]) get(keyPanel(another), "currentKey"))[0] == KeyEvent.VK_UP,
+            "저장 전 새 화면에 미완료 편집이 전파되면 안 됩니다.");
+        press(keys, KeyEvent.VK_UP);
+        press(keys, KeyEvent.VK_ENTER);
+        String expected = DEFAULT_KEYS.replace("ROTATE=38", "ROTATE=65");
+        require(value(owner.setting, "keySetting").equals(expected), "키 서브메뉴 저장은 메모리 설정을 갱신해야 합니다.");
+        require(Arrays.equals(originalFile, Files.readAllBytes(Path.of("setting.txt"))), "상위 메뉴 저장 전에는 파일을 변경하면 안 됩니다.");
+        require(value(owner.new Setting(), "keySetting").equals(DEFAULT_KEYS), "파일 저장 전 재로드는 원래 키여야 합니다.");
+        owner.setting.exportSetting();
+        require(value(owner.new Setting(), "keySetting").equals(expected), "파일 저장 후에는 변경한 키를 읽어야 합니다.");
+    }
+
+    private static void settingOptionCycle() throws Exception {
+        Maincontainer owner = owner("");
+        Settingpanel settings = new Settingpanel(owner);
+        for (String size : List.of("750X625", "900X750", "600X500", "750X625")) {
+            press(settings, KeyEvent.VK_ENTER);
+            require(value(owner.setting, "windowSize").equals(size) && hasLabel(settings, size), "창 크기 순서와 표시가 같아야 합니다.");
+        }
+        for (int i = 0; i < 3; i++) press(settings, KeyEvent.VK_DOWN);
+        for (String color : List.of("Protanopia", "Deuteranopia", "Tritanopia", "Normal", "Protanopia")) {
+            press(settings, KeyEvent.VK_ENTER);
+            require(value(owner.setting, "colorBlind").equals(color) && hasLabel(settings, color), "색상 순서와 표시가 같아야 합니다.");
+        }
+        require(Files.readString(Path.of("setting.txt")).isEmpty(), "선택만 바꿔서는 파일을 저장하면 안 됩니다.");
+        owner.setting.exportSetting();
+        Maincontainer.Setting loaded = owner.new Setting();
+        require(value(loaded, "windowSize").equals("750X625") && value(loaded, "colorBlind").equals("Protanopia"),
+            "변경한 창 크기·색상을 저장하고 다시 읽어야 합니다.");
+    }
+
+    private static void settingFileBoundaries() throws Exception {
+        Maincontainer owner = owner("");
+        Files.delete(Path.of("setting.txt"));
+        require(value(owner.new Setting(), "keySetting").equals(DEFAULT_KEYS), "파일이 없으면 기본 키여야 합니다.");
+        owner = owner("\ninvalid line\nwindowSize:bad\ncolorBlind:Unknown\nfuture:value\n");
+        require(value(owner.setting, "windowSize").equals("600X500") && value(owner.setting, "colorBlind").equals("Normal"),
+            "알 수 없는 값은 기본 설정을 유지해야 합니다.");
+        owner = owner("  windowSize : 900X750  \n  colorBlind : Tritanopia  \n keySetting : " + CUSTOM_KEYS + "  \n");
+        require(value(owner.setting, "windowSize").equals("900X750") && value(owner.setting, "colorBlind").equals("Tritanopia")
+                && value(owner.setting, "keySetting").equals(CUSTOM_KEYS), "줄 앞뒤와 콜론 주변 공백은 기존처럼 허용해야 합니다.");
+    }
+
+    private static void keyArrayOwnership() throws Exception {
+        Maincontainer owner = owner("");
+        Integer[] first = owner.setting.getKeyCodes();
+        Integer[] second = owner.setting.getKeyCodes();
+        require(first != second && Arrays.equals(first, second), "조회마다 독립된 편집 배열이어야 합니다.");
+        first[0] = KeyEvent.VK_W;
+        require(second[0] == KeyEvent.VK_UP && value(owner.setting, "keySetting").equals(DEFAULT_KEYS),
+            "반환 배열 변경이 다른 배열이나 저장된 설정에 전파되면 안 됩니다.");
+        owner.setting.updateKeyCodes(first);
+        first[0] = KeyEvent.VK_A;
+        require(value(owner.setting, "keySetting").equals(CUSTOM_KEYS) && owner.setting.getKeyCodes()[0] == KeyEvent.VK_W,
+            "저장에 전달한 배열을 나중에 바꿔도 설정값이 바뀌면 안 됩니다.");
     }
 
     private static void blockInitialization() {
@@ -694,7 +815,10 @@ public final class RefactoringRegressionTest {
     }
 
     private static int[][] cells(Board board) throws Exception { return (int[][]) get(board, "board"); }
-    private static String value(Maincontainer.Setting setting, String name) { return setting.currentSettingMap.get(name).getCurrentSetting(); }
+    private static String value(Maincontainer.Setting setting, String name) throws Exception {
+        java.util.Map<?, ?> values = (java.util.Map<?, ?>) get(setting, "currentSettingMap");
+        return (String) call(values.get(name), "getCurrentSetting");
+    }
     private static String scoreText(Scoreboardpanel panel) throws Exception { return ((JTextPane) get(panel, "scorepanel")).getText(); }
 
     private static List<Block> blocks() { return List.of(new IBlock(), new JBlock(), new LBlock(), new OBlock(), new SBlock(), new TBlock(), new ZBlock()); }

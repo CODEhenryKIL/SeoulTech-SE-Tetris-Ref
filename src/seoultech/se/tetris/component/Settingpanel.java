@@ -60,11 +60,10 @@ public class Settingpanel extends JPanel{
         gbc.insets = new Insets(10, 10, 10, 10);
 
             // 테트리스 게임 화면의 크기를 조절 - 최소 3가지 이상 미리 정의된 크기.
-            windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting()) {
+            windowSizeOption = new OptionButton("Window Option: ", maincontainer.setting.getWindowSize()) {
                 @Override
                 protected void isPressed() {
-                    maincontainer.setting.currentSettingMap.get("windowSize").changeSetting();
-                    option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
+                    option.setText(maincontainer.setting.nextWindowSize());
                 }
             };
             menu.add(settingPanel, windowSizeOption);
@@ -98,11 +97,10 @@ public class Settingpanel extends JPanel{
             };
             menu.add(settingPanel, resetScoreOption);
             // 색맹 모드 켜고 끄기.
-            colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting()) {
+            colorBlindOption = new OptionButton("Color Option: ", maincontainer.setting.getColorPalette()) {
                 @Override 
                 protected void isPressed() {
-                    maincontainer.setting.currentSettingMap.get("colorBlind").changeSetting();
-                    option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
+                    option.setText(maincontainer.setting.nextColorPalette());
                 }
             };
             menu.add(settingPanel, colorBlindOption);
@@ -111,8 +109,8 @@ public class Settingpanel extends JPanel{
                 @Override 
                 protected void isPressed() {
                     maincontainer.setting.clearSetting();
-                    windowSizeOption.option.setText(maincontainer.setting.currentSettingMap.get("windowSize").getCurrentSetting());
-                    colorBlindOption.option.setText(maincontainer.setting.currentSettingMap.get("colorBlind").getCurrentSetting());
+                    windowSizeOption.option.setText(maincontainer.setting.getWindowSize());
+                    colorBlindOption.option.setText(maincontainer.setting.getColorPalette());
                     Settingpanel.this.revalidate();
                     Settingpanel.this.repaint();
                 }
@@ -201,9 +199,7 @@ public class Settingpanel extends JPanel{
             add(keyList);
             keyList.setBounds(10, 10, settingPanel.getWidth(), settingPanel.getHeight());
             keyList.setLayout(new GridBagLayout());
-            String[] parts = maincontainer.setting.currentSettingMap.get("keySetting").getCurrentSetting().split(",");
-            currentKey = new Integer[6];
-            for (int i = 0; i < 6; i++) currentKey[i] = Integer.parseInt(parts[i].split("=")[1]);
+            currentKey = maincontainer.setting.getKeyCodes();
 
             rotateOption = new OptionButton("Rotate: ", KeyEvent.getKeyText(currentKey[0])) {
                 @Override 
@@ -256,13 +252,7 @@ public class Settingpanel extends JPanel{
             exitOption = new OptionButton("Save and Exit", null) {
                 @Override 
                 protected void isPressed() {
-                    String str = "ROTATE=" + currentKey[0] 
-                                + ",DOWN=" + currentKey[1] 
-                                + ",LEFT=" + currentKey[2] 
-                                + ",RIGHT=" + currentKey[3] 
-                                + ",PAUSE=" + currentKey[4] 
-                                + ",HARD_DROP=" + currentKey[5];
-                    Settingpanel.this.maincontainer.setting.currentSettingMap.get("keySetting").modifySetting(str);
+                    maincontainer.setting.updateKeyCodes(currentKey);
                     Settingpanel.this.removeKeyListener(keylistener2);
                     Settingpanel.this.addKeyListener(Settingpanel.this.playerKeyListener);
                     Settingpanel.this.remove(ChangeKeyPanel.this);

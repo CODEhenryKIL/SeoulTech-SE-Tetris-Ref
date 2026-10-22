@@ -2,7 +2,7 @@
 
 작성일: 2026-10-22
 
-상태: PR10 오류·REF-01~03 로컬 구현·검증 완료(macOS) / REF-04 이후 논의 진행
+상태: PR10 오류·REF-01~04 로컬 구현·검증 완료(macOS) / REF-05 이후 논의 진행
 
 이 문서를 앞으로 리팩토링 논의를 이어갈 기준으로 사용한다. 기존 [tetris-improvements.md:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/tetris-improvements.md:1>)와 10월 20일 계획 초안은 참고 자료로 두고 원문을 변경하지 않는다. 목표는 **중복 코드 삭제와 가독성 개선을 우선하고, 1차 기능을 유지하면서 2차 요구사항에 필요한 경계를 정리하는 것**이다.
 
@@ -109,14 +109,14 @@
 
 PR10 오류 처리 후 아래 순서로 하나씩 상의하는 안이다. 번호는 이 문서의 식별자이며 기존 팀 작업 카드 번호가 아니다.
 
-4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02·REF-03의 구현·자동 검사와 macOS 실제 조작을 마쳤으며 검증 범위는 아래 실행 기록을 따른다. 4절 6번은 REF-04에서 현재 코드 기준의 정리 범위를 더 살펴본다.
+4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02~REF-04의 구현·자동 검사와 macOS 실제 조작을 마쳤으며 검증 범위는 아래 실행 기록을 따른다. 4절 6번의 설정 처리 중복은 REF-04의 승인 범위에서 정리했다.
 
 | 순서 | 번호 | 개선 후보 | 예상 범위·위험 | 상태 |
 |---|---|---|---|---|
 | 1 | REF-01 | 중복 창 표시와 시작 화면 복귀 흐름 정리 | 작음~중간; 크기·포커스 순서 주의 | 구현·검증 완료(macOS) |
 | 2 | REF-02 | Block 기본 초기화 중복 삭제 | 작음; 초기화 누락 방지 필요 | 구현·검증 완료(macOS) |
 | 3 | REF-03 | 메뉴 선택 상태 소유와 유사 코드 정리 | 중간; 생성·복귀 시 선택 상태 주의 | 구현·검증 완료(macOS) |
-| 4 | REF-04 | 설정 파싱·검증·변경 경계 정리 | 중간; 파일 호환·현재값 유지 필요 | 논의 대기 |
+| 4 | REF-04 | 설정 파싱·검증·변경 경계 정리 | 중간; 파일 호환·현재값 유지 필요 | 구현·검증 완료(macOS) |
 | 5 | REF-05 | Board의 중복된 고정·승계·그리기 흐름 정리 | 중간~큼; 호출 순서가 게임 결과에 영향 | 논의 대기 |
 | 6 | REF-06 | 블록 생성 책임 분리 | 중간; 2차 난이도·아이템의 확장 지점 | 논의 대기 |
 | 7 | REF-07 | 게임 규칙과 Swing 표시·시간 처리 경계 분리 | 큼; 필요한 규칙부터 좁게 분리 | 논의 대기 |
@@ -212,11 +212,32 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ### REF-04. 설정 경계와 문자열 반복
 
-- **확인 사실 / 확신 높음**: 같은 키 문자열을 Maincontainer.applySetting과 ChangeKeyPanel 생성자에서 각각 분해하고, 저장할 때 다시 조립한다. UI는 Setting 내부 Map에 직접 접근한다. [Maincontainer.java:119](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:119>), [Settingpanel.java:207](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:207>), [Settingpanel.java:263](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:263>).
-- **확인 사실**: 파일 로드의 전체 키 검증과 UI의 개별 키 검증이 다른 위치에 있다. 허용 목록을 순환하는 크기/색상 경로는 이미 제한되어 있으므로 '현재 모든 설정 입력이 무검증'으로 표현하면 부정확하다. [Maincontainer.java:229](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Maincontainer.java:229>), [Settingpanel.java:63](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:63>), [Settingpanel.java:348](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Settingpanel.java:348>).
-- **제안**: 우선 파싱/직렬화 책임의 중복을 줄인다. 그다음 UI가 의미 있는 설정 동작을 호출하도록 좁히고, 필요할 때 설정 값·검증·저장을 프레임 밖으로 분리한다. 문자열 Map을 전부 새 타입으로 바꾸는 작업부터 시작하지 않는다.
-- **위험·검증**: 기본값, 예약 키·중복 키, 정상/손상 파일 처리, 5키 레거시 정책, 저장 후 재로드를 보존한다. PR10 세 오류를 다시 발생시키지 않아야 한다.
-- **상의할 사항**: 문자열 처리 공통화까지만 먼저 할지, 설정 객체 독립까지 할지.
+- **수정 전 확인**: 같은 키 문자열을 `Maincontainer.applySetting`과 `ChangeKeyPanel` 생성자에서 각각 분해하고, 키 메뉴에서 다시 조립했다. UI도 `Setting` 내부 Map에 직접 접근했다. 이번 구현에서 문자열 처리를 `Setting`으로 모으고 Map을 private으로 좁혔다.
+- **유지한 규칙**: 파일 전체 키 검증과 UI의 개별 키 입력 검증은 목적이 달라 구분한다. 공통 파서는 여섯 키 이름·순서와 숫자를 읽고, 파일 검증은 양수·중복·PAUSE Enter 금지를 추가 확인한다. UI의 입력 처리와 경고 문구는 유지하며, `updateKeyCodes`는 기존 UI 편집값의 문자열 변환만 담당한다. 크기·색상은 기존 허용 목록으로 순환한다.
+- **합의·구현**: 키 파싱·조립 공통화와 의미 있는 설정 조회·변경 함수까지만 진행한다. `Setting`의 별도 파일 분리나 전체 설정의 새 타입 도입은 이번 범위에 포함하지 않는다.
+- **위험·검증**: 기본값, 예약 키·중복 키, 정상/손상 파일 처리, 현재 5키 파일 거절 정책, 저장 후 재로드를 보존한다. PR10 세 오류와 창 크기 변경 후 흰 여백 회귀를 다시 확인한다.
+- **상태**: 사용자 구현·검증 지시에 따라 아래 계획을 실행했다. REF-01~03의 마지막 커밋을 기준으로 분기한 `refactor/settings-boundary`에서 별도 커밋으로 관리하며 push·PR은 후속 진행한다.
+
+#### REF-04 실행 계획 (2026-10-22)
+
+- **승인 범위**: `Maincontainer.java` 내부 `Setting`에 키 배열 조회·문자열 저장을 모으고, `applySetting`과 `Settingpanel`의 직접 파싱·조립을 제거한다. 창 크기·색상도 의미 있는 조회·순환 함수로 접근한다. `Setting`의 별도 파일 분리는 하지 않는다.
+- **순서**: 기존 동작 회귀 검사를 먼저 보강·실행한다 → 키 문자열 중복을 공통화한다 → UI의 내부 Map 접근을 제거한다 → 전체 회귀·컴파일 진단·렌더 비교·macOS 실제 조작을 검증한다 → 독립 검토한다.
+- **보존할 경계**: 키 배열은 화면별 편집 복사본이다. 키 서브메뉴 저장은 메모리 설정만 변경하며 상위 메뉴 저장에서 파일을 쓴다. 창 크기·색상은 현재 순서로 순환한다. 키 파일 원문과 여섯 키의 순서, 숫자 허용 규칙, UI의 중복·예약 키 메시지는 유지한다.
+- **기존 실패 처리 분류**: 알 수 없는 항목·손상된 값은 무시하고 직전 정상값 또는 기본값을 유지하는 파일 경계의 방어 동작이다. 정상·손상 경로를 회귀 검사로 고정하고 유지한다. 5키 파일은 현재처럼 거절하며 자동 이관 기능을 추가하지 않는다. 파일 I/O 예외의 출력 정책도 유지한다.
+- **대상 파일**: `src/seoultech/se/tetris/component/Maincontainer.java`, `src/seoultech/se/tetris/component/Settingpanel.java`, `tests/RefactoringRegressionTest.java`, 이 문서. 의존성·게임 규칙·레이아웃 변경은 없다.
+- **진행 상태**: 아래 구현·검증 완료. 독립 사전 검토 CLEAR 후 실행했으며 구현 검토의 발견 이슈는 0개다.
+
+#### REF-04 구현·검증 결과 (2026-10-22)
+
+- **코드 변경**: `Setting.getKeyCodes()`가 공통 파서로 새 편집 배열을 반환하고 `updateKeyCodes()`가 여섯 키의 이름·순서에 따라 문자열을 만든다. 파일 검증도 같은 파서를 사용한다. `applySetting`과 키 화면의 중복 분해·조립을 제거했다. 창 크기·색상은 getter와 next 함수로 조회·순환하며 production의 `currentSettingMap` 접근은 `Setting` 안에만 남는다.
+- **수정 전 기준선**: 기존 26검사에 파일 허용·거절, 원문 유지, 편집/메모리/파일 저장 시점, 창 크기·색상 순환, 누락·손상·공백 처리를 보강하여 코드 변경 전에 31/31 통과했다. 5키, 항목 순서/이름, 빈 값, 숫자 변환 실패·범위 초과, 0·음수, 중복, PAUSE Enter 거절과 HARD_DROP Enter·`+0038` 허용도 현재 동작으로 고정했다.
+- **수정 후 자동 검사**: 새 API의 반환·전달 배열 소유권 검사를 추가하여 32/32 통과했다. Java 21 `--release 21 -Xlint:all` 컴파일 오류 0개. 기존 serial·Unsafe·this-escape·deprecation 경고 39개는 전후 동일하다. 별도 lint/LSP/보안 분석 구성은 없어 컴파일러 진단과 diff 검사를 사용했다.
+- **화면 비교**: 동일 JDK·Metal L&F·EDT에서 창 크기 3종 × 메뉴 상태 8종, 총 24개 PNG와 24개 배치 기록이 수정 전후 48/48 byte-identical이다.
+- **macOS 실제 조작**: 별도 빌드에서 실제 `Tetris.main()`을 실행하고 AppleScript의 OS 키 입력·전면 앱 확인, 수동 입력 관찰 로그와 화면 캡처로 40단계 검증을 마쳤다. 창 크기 3종·색상 4종 순환, 키 편집 중 값 분리, 키 메뉴 저장 후 메모리만 반영, 상위 메뉴 저장 후 파일 반영을 확인했다. W 회전·B 하드드롭·일시정지·시작 화면 복귀, 게임 종료 후 새 프로세스에서 키·크기·색상 유지, 기본값 초기화와 저장을 확인했다. 네 번 W 회전 후 보드 픽셀은 처음과 같고, B 하드드롭은 점수 36 증가·다음 블록 승계를 확인했다. 세 크기에서 시작 화면의 첫 입력·패널 1개 유지와 하단 흰 여백 없음도 확인했다.
+- **조작 관찰 보정**: 최초 게임 렌더 중 로그 지연은 상태 대기로 보완했다. 화면 제거로 Enter의 KEY_RELEASED 관찰이 누락된 경우는 실제 화면과 다음 OS 방향키 입력으로 전환·포커스를 확인했다. 종료 스크립트 조건과 재실행의 이전 로그 읽기 문제도 검증 도구에서 수정했다. 이 과정에서 제품 코드 변경은 없었다.
+- **독립 검토**: 별도 검토자가 컴파일·32검사와 48파일 렌더 비교를 재확인했으며 발견 이슈 0개다. LSP 도구 부재로 형식 판정은 COMMENT, 코드 기준 승인 차단 사유 없음으로 보고했다.
+- **데이터·근거·한계**: 실제 저장소의 `setting.txt`·`tetris_score.txt`는 전후 동일하다. 테스트 전용 폴더에서만 값을 저장했고 GUI 빌드의 소스 해시는 현재 production 소스와 모두 일치한다. `artifacts/ref04/`에 컴파일·회귀·렌더 비교, `native-menu-checks.json`, 두 세션 입력 로그, `native-screenshots/`, 회전·창 크기 비교와 `verification-summary.json`을 보관한다. Windows 실행은 미검증이다. 원격 게시는 별도로 진행한다.
+
 
 ### REF-05. Board의 반복된 이동·고정 흐름
 
@@ -302,7 +323,8 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 | 2026-10-22 | REF-01 | 중복 표시 제거·시작 화면 복귀 공통화 | 구현 완료, 회귀 18/18 및 macOS 실제 조작 검증 완료 |
 | 2026-10-22 | REF-02 | 부모의 중복 초기화 삭제, 7종 초기 모양·색 검사 보강 | 자동 검사 19/19 및 후속 macOS 실제 조작 검증 완료 |
 | 2026-10-22 | REF-03 | 화면별 메뉴 선택 상태 분리·공통 선택 처리·키 메뉴 표시 재사용 | 회귀 26/26·24상태 렌더 동일·실제 조작 50단계 통과(macOS) |
-| 미정 | REF-04~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
+| 2026-10-22 | REF-04 | 설정 문자열 처리 공통화·UI의 내부 Map 직접 접근 제거 | 회귀 32/32·24상태 렌더 동일·macOS 실제 조작 40단계 검증 완료 |
+| 미정 | REF-05~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
 
 
 ## 9. 조건부 오류 해결 기록 커밋
