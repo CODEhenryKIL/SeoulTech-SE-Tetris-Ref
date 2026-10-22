@@ -7,14 +7,6 @@ public abstract class Block {
 	protected int[][] shape;
 	protected Color color;
 	
-	public Block() {
-		shape = new int[][]{ 
-				{1, 1}, 
-				{1, 1}
-		};
-		color = Color.YELLOW;
-	}
-	
 	public int getShape(int x, int y) {
 		return shape[y][x];
 	}

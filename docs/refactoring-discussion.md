@@ -2,7 +2,7 @@
 
 작성일: 2026-10-22
 
-상태: PR10 오류 및 REF-01 로컬 구현·검증 완료 / REF-02 이후는 항목별 합의·논의 진행
+상태: PR10 오류·REF-01 로컬 완료 / REF-02 코드·자동 검사 완료, 실제 조작 미확인 / REF-03 이후 논의 진행
 
 이 문서를 앞으로 리팩토링 논의를 이어갈 기준으로 사용한다. 기존 [tetris-improvements.md:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/tetris-improvements.md:1>)와 10월 20일 계획 초안은 참고 자료로 두고 원문을 변경하지 않는다. 목표는 **중복 코드 삭제와 가독성 개선을 우선하고, 1차 기능을 유지하면서 2차 요구사항에 필요한 경계를 정리하는 것**이다.
 
@@ -70,7 +70,7 @@
 | `Nextblockpanel` | 다음 블록 텍스트와 색·배율 렌더링 | Gamepanel의 getter를 거쳐 Board의 다음 블록을 조회. [Nextblockpanel.java:96](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:96>), [Nextblockpanel.java:108](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Nextblockpanel.java:108>) |
 | `Scoreboardpanel` | 파일 읽기·파싱·정렬·상위 10개 표시·시작 화면 복귀 | [Scoreboardpanel.java:72](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Scoreboardpanel.java:72>), [Scoreboardpanel.java:87](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/component/Scoreboardpanel.java:87>) |
 | `Block` + 7개 구체 블록 | 모양·색·가변 회전·가로/세로 길이 | `IBlock/JBlock/LBlock/OBlock/SBlock/TBlock/ZBlock`; 각 생성자에서 모양과 색 대입. [Block.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/Block.java:7>), [OBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/OBlock.java:7>) |
-| 회귀 테스트 | 설정·생성·이동/회전·점수·정지·기록·화면 크기·복귀의 18개 검사 | [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>) |
+| 회귀 테스트 | 설정·생성·이동/회전·점수·정지·기록·화면 크기·복귀·블록 초기값의 19개 검사 | [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>) |
 
 **확인된 연결**: Gamepanel은 Board를 소유하며 조작 메서드를 호출한다. Board도 Gamepanel을 참조해 점수·미리보기 갱신, 정지·재개·게임 종료 UI를 호출한다. 설정 파일은 Maincontainer 내부에서 처리하지만 점수 파일은 Gamepanel의 쓰기, Scoreboardpanel의 읽기, Settingpanel의 초기화로 나뉜다.
 
@@ -83,7 +83,7 @@
 | 기존 항목 | 현재 판정 | 현재 코드 기준으로 바뀌어야 할 설명 |
 |---|---|---|
 | 새 블록 시작 위치 가운데 계산 | **수정 방향 합의·구현 전** | O블록의 시작 x가 3에서 4로 바뀌는 동작 변경을 포함한다. 초기·일반 고정 후·하드드롭 후 생성과 게임 오버 판정에 같은 계산을 적용하고 검증 |
-| Block 생성자의 중복 초기화 제거 | **중복 삭제 방향 합의·구현 전** | 부모의 기본 초기화를 삭제하고 7개 하위 생성자의 모양·색 설정은 유지. 필수 생성자 인수 등 추가 설계는 별도 논의 |
+| Block 생성자의 중복 초기화 제거 | **REF-02 코드·자동 검사 완료, GUI 조작 미확인** | 부모 기본 생성자 8줄 삭제. 7종 하위 생성자 유지, 초기 모양·색 고정 검사 포함 19/19 통과 |
 | 세 설정 setter의 입력 검증 | **기존 API 설명 폐기·분석 대상 개정** | 해당 setter는 삭제됨. 현재 `changeSetting()/modifySetting()`, UI와 파일 로드의 검증 책임을 검토 |
 | 중복 창 표시 호출 제거 | **REF-01 구현·검증 완료(macOS)** | 진입점의 중복 표시 호출을 제거하고 `applySetting()`의 표시는 유지. 최초 실행과 키 입력 확인 |
 | 시작 화면 복귀 중복 제거 | **REF-01 구현·검증 완료(macOS)** | 화면 정리·설정 적용 후 `enterStart()` 재사용. 복귀·첫 입력·크기·색상·이전 패널 잔존 검증 완료 |
@@ -109,12 +109,12 @@
 
 PR10 오류 처리 후 아래 순서로 하나씩 상의하는 안이다. 번호는 이 문서의 식별자이며 기존 팀 작업 카드 번호가 아니다.
 
-4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02의 중복 기본값 삭제는 방향 합의 후 구현 전이다. 4절 6번은 REF-04에서 현재 코드 기준의 정리 범위를 더 살펴본다.
+4절에서 이미 논의한 항목은 아래 후보에 연결해 한 번만 구현한다. REF-01의 창 표시·시작 화면 복귀 정리는 아래 실행 기록에 따라 구현·검증을 마쳤으며, REF-02의 중복 기본값 삭제는 구현·자동 검사를 마쳤으며 실제 조작 확인은 아래 한계를 따른다. 4절 6번은 REF-04에서 현재 코드 기준의 정리 범위를 더 살펴본다.
 
 | 순서 | 번호 | 개선 후보 | 예상 범위·위험 | 상태 |
 |---|---|---|---|---|
 | 1 | REF-01 | 중복 창 표시와 시작 화면 복귀 흐름 정리 | 작음~중간; 크기·포커스 순서 주의 | 구현·검증 완료(macOS) |
-| 2 | REF-02 | Block 기본 초기화 중복 삭제 | 작음; 초기화 누락 방지 필요 | 중복 삭제 방향 합의·구현 전 |
+| 2 | REF-02 | Block 기본 초기화 중복 삭제 | 작음; 초기화 누락 방지 필요 | 코드·자동 검사 완료, GUI 조작 미확인 |
 | 3 | REF-03 | 메뉴 선택 상태 소유와 유사 코드 정리 | 중간; 생성·복귀 시 선택 상태 주의 | 논의 대기 |
 | 4 | REF-04 | 설정 파싱·검증·변경 경계 정리 | 중간; 파일 호환·현재값 유지 필요 | 논의 대기 |
 | 5 | REF-05 | Board의 중복된 고정·승계·그리기 흐름 정리 | 중간~큼; 호출 순서가 게임 결과에 영향 | 논의 대기 |
@@ -140,7 +140,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 **실행 기록 (2026-10-22)**
 
-- **브랜치·PR 구분**: 기존 버그 수정은 `refactor/code-cleanup`, REF-01은 `refactor/start-screen-flow`에서 별도 커밋으로 관리한다. REF-01 브랜치는 버그 수정 커밋 `2745dc8`에서 분기했으므로, 버그 PR을 먼저 main에 반영한 뒤 REF-01 PR의 비교 범위를 확인한다.
+- **브랜치·PR 구분**: 기존 버그 수정은 `refactor/code-cleanup`, 리팩토링은 `refactor/start-screen-flow`에서 관리한다. REF별 커밋을 유지하고 관련 REF 2~3개를 하나의 PR로 묶는다. 첫 묶음은 REF-01·REF-02이며 REF-03 포함 여부는 논의 후 결정한다. 이 브랜치는 버그 수정 커밋 `2745dc8`에서 분기했으므로, 버그 PR을 먼저 main에 반영한 뒤 리팩토링 PR의 비교 범위를 확인한다.
 
 - **코드 변경**: `Tetris.main()`의 중복 표시를 제거했다. 게임·점수판은 기존 패널 제거 후 `enterStart()`를 호출한다. 설정 복귀는 기존 root 분리·재부착을 보존한 채 설정 패널 제거 → root 분리 → 설정 적용 → `enterStart()` 순서로 변경했다. 새 Startpanel이 변경된 설정 크기·색을 읽고 공통 CardLayout 경로로 표시된다.
 - **회귀 검사**: `start-return` 검사를 추가해 게임·점수판 왕복 3회, 이전 패널 제거, 새 시작 화면 생성, START 선택 초기화를 확인한다. 수정 전·후 전체 **18/18 통과**. Java 21 전체 컴파일과 `git diff --check` 통과. serial/Unsafe 관련 컴파일 경고는 남아 있다.
@@ -159,9 +159,26 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ### REF-02. Block 중복 기본값
 
-- **확인 사실 / 확신 높음**: 추상 Block의 생성자는 O모양/노란색을 넣고, OBlock을 포함한 7종 생성자는 자기 모양/색을 다시 넣는다. [Block.java:10](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/Block.java:10>), [OBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/OBlock.java:7>), [IBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/IBlock.java:7>).
+**실행 계획 (2026-10-22, `refactor/start-screen-flow`)**
+
+1. 기존 7종 생성자의 초기 모양 전체와 색을 고정 기대값으로 검증하는 `block-initialization` 검사를 추가하고, 생산 코드 수정 전에 전체 회귀 검사를 실행한다.
+2. `Block`의 명시적 기본 생성자만 삭제한다. `shape`·`color` 필드, 공통 회전·조회 메서드, 7개 하위 생성자는 그대로 유지한다. 확인한 모든 하위 생성자가 자기 모양·색을 대입하며, 부모 생성자에서는 다른 동작을 수행하지 않는다.
+3. 전체 Java 21 컴파일·회귀 검사·diff 검사와 별도 코드 검토를 진행한다. 실제 게임에서 현재·다음 블록 표시와 이동·회전·하드드롭을 확인한다. 자동 검사의 고정 기대값으로 7종 전체를 확인하고, GUI에서 우연히 나온 블록만으로 전체 검증을 대신하지 않는다.
+4. 새 하위 블록도 자기 모양·색을 설정하고 회귀 검사에 기대값을 추가해야 함을 기록한다. 필수 생성자 인수 도입 등 초기화 구조 변경은 이번 범위에 포함하지 않는다.
+
+**범위·중복 분류**: 수정 파일은 `Block.java`, 기존 회귀 테스트, 이 문서다. 부모의 O모양·노란색 기본값은 현재 7종에서 모두 덮어쓰는 중복 초기화다. 이 기본값에 의존하는 추가 하위 클래스·익명 하위 클래스는 저장소에서 확인되지 않았다. 의존성 추가나 새 예외 무시·기본값 경로는 만들지 않는다. 계획 검토와 구현 후 검토는 별도로 수행한다.
+
+**실행 기록 (2026-10-22)**
+
+- **코드 변경**: `Block.java`의 명시적 기본 생성자 8줄만 삭제했다. 모양·색 필드와 공통 조회·회전 메서드, 7종 하위 생성자는 유지했다. 컴파일러가 제공하는 공개 기본 생성자로 기존 생성 호출이 유지된다.
+- **수정 전후 검증**: 7종 전체 초기 행렬·정확한 색을 고정하는 `block-initialization`을 추가했다. 생산 코드 변경 전·후 모두 **19/19 통과**. Java 21 `--release 21 -Xlint:all` 전체 컴파일 성공, 기존 serial/Unsafe 등의 경고는 남아 있다. 별도 빌드 도구·lint·LSP 구성은 없으며 컴파일 진단과 diff 검사를 수행했다.
+- **추가 근거·독립 검토**: `javap -p` 기준 `Block()` 포함 API 목록이 전후 동일하고 7종 하위 클래스의 `.class` 파일도 전후 바이트가 동일하다. 계획과 구현을 별도로 검토했으며 수정 요청은 없었다. 의존성·새 추상화·예외 무시 경로는 추가하지 않았다.
+- **실사용 한계**: 변경된 소스로 만든 테스트 앱의 시작 화면 표시는 확인했다. 자동 조작 연결에서 장시간 대기와 활성화 실패가 발생했고, 수동 활성화를 요청한 뒤에도 실제 키 수신 로그는 0건이었다. 따라서 현재·다음 블록 표시와 이동·회전·하드드롭의 실제 조작은 **미확인**이다. 자동 검사 통과를 실제 조작 통과로 기록하지 않는다. Windows 실행도 미검증이다.
+- **데이터·근거**: 실제 저장소의 `setting.txt`·`tetris_score.txt`는 전후 바이트가 동일하다. 테스트 앱은 별도 임시 파일을 사용했다. 저장소 밖 `artifacts/ref02/`에 수정 전후 컴파일·19개 검사 로그, API 비교, 하위 클래스·데이터 무변경 확인과 GUI 입력 로그를 보관한다. REF-02도 독립 커밋으로 관리하며, 원격 push·PR 생성은 별도로 진행한다.
+
+- **구현 전 확인 사실 / 확신 높음**: 추상 Block의 생성자는 O모양/노란색을 넣고, OBlock을 포함한 7종 생성자는 자기 모양/색을 다시 넣었다. [Block.java:10](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/Block.java:10>), [OBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/OBlock.java:7>), [IBlock.java:7](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/src/seoultech/se/tetris/blocks/IBlock.java:7>).
 - **제안**: 현재 7종이 반드시 모양·색을 채운다는 조건 아래 사용되지 않는 기본 초기화를 삭제하는 작은 변경을 우선 검토한다. 새 블록의 초기화 누락까지 막을 필요가 생기면 필수 생성자 인수 등 더 강한 계약을 별도 검토한다.
-- **위험·검증**: 삭제만 하면 미래 하위 클래스가 초기화를 빠뜨릴 위험이 있다. 7종 초기 모양·색, 네 칸 유지, 회전 방향과 네 번 회전 후 복원을 확인한다. 현재 검사는 회전 중 색 유지와 모양 일부를 확인하며, 각 초기 색·모양 전체의 고정 기대값은 별도 확인 대상이다.
+- **위험·검증**: 미래 하위 클래스도 모양·색을 직접 초기화해야 한다. 새 블록을 추가할 때 `block-initialization`에 초기 행렬·색의 기대값을 추가한다. 현재 7종의 초기값은 새 검사로 고정하며, 기존 회전 검사로 네 칸 유지·색 유지·네 번 회전 후 복원을 확인한다.
 - **상의할 사항**: 이번에는 중복 삭제만 할지, 초기화 계약 보강까지 묶을지.
 
 ### REF-03. 메뉴 상태와 유사 버튼 코드
@@ -239,7 +256,7 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 
 ## 7. 테스트 근거와 아직 확인하지 못한 부분
 
-- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 현재 18개 검사가 있다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀). 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
+- **파일 확인**: [RefactoringRegressionTest.java:55](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/SeoulTech-SE-Tetris-Ref/tests/RefactoringRegressionTest.java:55>)에 현재 19개 검사가 있다(기존 16개 + 창 크기 독립성 + 시작 화면 복귀 + 블록 초기값). 빌드 도구 설정은 없지만 테스트 코드가 없는 상태는 아니다. 새 라이브러리 설치를 리팩토링의 필수 선행 조건으로 두지 않는다.
 - **이전 실행 기록**: 2026-10-21 저장된 [refactoring-tests-run.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-run.log:1>)은 수정 브랜치 16/16 통과다. [refactoring-tests-unfixed-main.log:1](</Users/henrykil/Library/Mobile Documents/com~apple~CloudDocs/1. 대학수업/4학년2학기/SW공학/SE-Codex/artifacts/pr10-review/refactoring-tests-unfixed-main.log:1>)에는 당시 미수정 main `e6f2d5c`에서 설정 관련 네 검사가 실패한 기록이 있다.
 - **분석 작성 당시**: 문서 작성만 수행했고 테스트를 실행하지 않았다.
 - **후속 오류 해결 요청 검증 (2026-10-22)**: 전체 게임 소스 16개와 회귀 테스트를 Java 21 `--release 21 -Xlint:all`로 컴파일해 오류 0, 회귀 검사 16/16 통과. 컴파일 경고는 남아 있으며 새 리팩토링 범위로 확대하지 않았다.
@@ -262,7 +279,8 @@ PR10-04는 실제 창 크기 조회 재정의를 제거해 해결했다(2.2절).
 | 2026-10-22 | PR10-01~03 | 사용자 요청에 따라 조건부 오류 해결 우선 처리 | 기존 `4eabe8d` 적용 확인, Java 21 컴파일 및 회귀 검사 16/16 통과, 로컬 완료 |
 | 미정 | PR10-04 | 상의 대기 | 실제 GUI 원인 미확인 |
 | 2026-10-22 | REF-01 | 중복 표시 제거·시작 화면 복귀 공통화 | 구현 완료, 회귀 18/18 및 macOS 실제 조작 검증 완료 |
-| 미정 | REF-02~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
+| 2026-10-22 | REF-02 | 부모의 중복 초기화 삭제, 7종 초기 모양·색 검사 보강 | 코드·자동 검사 19/19 완료, 실제 조작 미확인 |
+| 미정 | REF-03~10 / DEC-01~05 | 각 항목의 합의·논의 상태는 5·6절 참조 | 후속 리팩토링 구현 전 |
 
 
 ## 9. 조건부 오류 해결 기록 커밋

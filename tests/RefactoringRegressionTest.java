@@ -59,6 +59,7 @@ public final class RefactoringRegressionTest {
         new Check("reset-settings", "사용자 설정을 기본값으로 복원·저장", RefactoringRegressionTest::resetSettings),
         new Check("unknown-setting", "모르는 설정을 무시하고 정상 설정 유지", RefactoringRegressionTest::unknownSetting),
         new Check("settings-isolation", "설정 인스턴스와 기본값 간 독립성", RefactoringRegressionTest::settingsIsolation),
+        new Check("block-initialization", "7종 블록의 초기 모양 전체·색상", RefactoringRegressionTest::blockInitialization),
         new Check("block-rotation", "7종 블록의 칸 수·색·시계 방향 회전", RefactoringRegressionTest::blockRotation),
         new Check("block-generation", "실제 생성기의 7종 생성·시드 재현", RefactoringRegressionTest::blockGeneration),
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
@@ -246,6 +247,23 @@ public final class RefactoringRegressionTest {
         require(value(original, "keySetting").equals(CUSTOM_KEYS), "새 인스턴스가 기존 사용자 키를 바꾸면 안 됩니다.");
         original.clearSetting();
         require(value(original, "keySetting").equals(DEFAULT_KEYS), "기본값 목록이 오염되면 안 됩니다.");
+    }
+
+    private static void blockInitialization() {
+        record Expected(Block block, String shape, java.awt.Color color) {}
+        for (Expected expected : List.of(
+                new Expected(new IBlock(), "[[1, 1, 1, 1]]", java.awt.Color.CYAN),
+                new Expected(new JBlock(), "[[1, 1, 1], [0, 0, 1]]", java.awt.Color.BLUE),
+                new Expected(new LBlock(), "[[1, 1, 1], [1, 0, 0]]", java.awt.Color.ORANGE),
+                new Expected(new OBlock(), "[[1, 1], [1, 1]]", java.awt.Color.YELLOW),
+                new Expected(new SBlock(), "[[0, 1, 1], [1, 1, 0]]", java.awt.Color.GREEN),
+                new Expected(new TBlock(), "[[0, 1, 0], [1, 1, 1]]", java.awt.Color.MAGENTA),
+                new Expected(new ZBlock(), "[[1, 1, 0], [0, 1, 1]]", java.awt.Color.RED))) {
+            Block block = expected.block();
+            String name = block.getClass().getSimpleName();
+            require(expected.shape().equals(shape(block)), name + "의 초기 모양이 바뀌면 안 됩니다.");
+            require(expected.color().equals(block.getColor()), name + "의 초기 색이 바뀌면 안 됩니다.");
+        }
     }
 
     private static void blockRotation() {
