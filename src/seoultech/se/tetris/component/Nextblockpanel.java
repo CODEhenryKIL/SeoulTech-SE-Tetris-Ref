@@ -20,6 +20,11 @@ import seoultech.se.tetris.blocks.Block;
 
 public class Nextblockpanel extends JComponent{
 
+<<<<<<< HEAD
+=======
+    private Gamepanel gamepanel;
+    private Block nextBlock;
+>>>>>>> 1444386 (Save changes)
     private ArrayList<TextChunk> textChunks;
 
     public Nextblockpanel() {
@@ -98,7 +103,10 @@ public class Nextblockpanel extends JComponent{
 			this.textChunks = new ArrayList<>();
 		} else {
             textChunks = new ArrayList<>();
+            Color color;
 			for (String str : text.split("")) {
+                if (str.equals("O")) color = nextBlock.getColor();
+                else color = Color.WHITE;
 				textChunks.add(new TextChunk(str, color));
 			}
 		}
@@ -107,15 +115,16 @@ public class Nextblockpanel extends JComponent{
 
     protected void drawNextBoard(Block next) {
         StringBuffer sb = new StringBuffer();
+        nextBlock = gamepanel.getNextBlock();
         for (int i = 0; i < 6; i++) sb.append(" ");
         sb.append("\n");
         for (int i = 0; i < 6; i++) sb.append(" ");
         sb.append("\n");
         for (int i = 0; i < next.height(); i++) {
             sb.append(" ");
-            for (int j = 0; j < next.width(); j++) {
-                if (next.getShape(j, i) == 0) sb.append(" ");
-                else sb.append("O");
+            for (int j = 0; j < gamepanel.getNextBlock().width(); j++) {
+                if (nextBlock.getShape(j, i) == 0) sb.append(" ");
+                else sb.append(nextBlock.getText(j, i));
             }
             sb.append("\n");
         }

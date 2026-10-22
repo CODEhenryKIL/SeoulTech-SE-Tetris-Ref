@@ -9,6 +9,10 @@ public class SBlock extends Block {
 			{0, 1, 1},
 			{1, 1, 0}
 		};
+		text = new String[][] {
+			{" ", "O", "O"},
+			{"O", "O", " "}
+		};
 		color = Color.GREEN;
 	}
 }

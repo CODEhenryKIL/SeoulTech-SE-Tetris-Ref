@@ -9,6 +9,10 @@ public class OBlock extends Block {
 			{1, 1}, 
 			{1, 1}
 		};
+		text = new String[][]{
+			{"O", "O"},
+			{"O", "O"}
+		};
 		color = Color.YELLOW;
 	}
 }

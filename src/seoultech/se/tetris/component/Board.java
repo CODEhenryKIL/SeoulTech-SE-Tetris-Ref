@@ -16,7 +16,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
@@ -26,8 +25,19 @@ import javax.swing.JComponent;
 import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
+import seoultech.se.tetris.blocks.AnchorBlock;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.BlockGenerator;
+import seoultech.se.tetris.blocks.BombBlock;
+import seoultech.se.tetris.blocks.ColumnBlock;
+import seoultech.se.tetris.blocks.IBlock;
+import seoultech.se.tetris.blocks.JBlock;
+import seoultech.se.tetris.blocks.LBlock;
+import seoultech.se.tetris.blocks.OBlock;
+import seoultech.se.tetris.blocks.RowBlock;
+import seoultech.se.tetris.blocks.SBlock;
+import seoultech.se.tetris.blocks.TBlock;
+import seoultech.se.tetris.blocks.ZBlock;
 import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
@@ -50,12 +60,13 @@ public class Board extends JComponent {
 	private Block next;
 	private int erasedLineNum = 0;
 	private int level = 1;
-	// IBlock, JBlock, LBlock, ZBlock, SBlock, TBlock, OBlock
-	private ArrayList<Block> blockList = new ArrayList<>(List.of(new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock()));
-	private static final LinkedHashMap<String, ArrayList<Integer>> rouletteWheelSelection = new LinkedHashMap<>(Map.of(
-		"Easy", 	new ArrayList<>(List.of(12, 10, 10, 10, 10, 10, 10)),
-		"Normal", 	new ArrayList<>(List.of(10, 10, 10, 10, 10, 10, 10)),
-		"Hard", 	new ArrayList<>(List.of(8, 10, 10, 10, 10, 10, 10))
+	private Block[] blockList = {new IBlock(), new JBlock(), new LBlock(), new ZBlock(), new SBlock(), new TBlock(), new OBlock()};
+	private Block[] itemList = {new AnchorBlock(), new BombBlock(), new RowBlock(), new ColumnBlock()};
+	private static final LinkedHashMap<String, int[]> rouletteWheelSelection = new LinkedHashMap<>(Map.of(
+		"Easy", 	new int[]{72, 12, 10, 10, 10, 10, 10, 10}, // 첫 번째 숫자는 모든 숫자의 합
+		"Normal", 	new int[]{70, 10, 10, 10, 10, 10, 10, 10},
+		"Hard", 	new int[]{68, 8, 10, 10, 10, 10, 10, 10},
+		"Item", 	new int[]{40, 10, 10, 10, 10}
 	));
 	int x = 3; //Default Position.
 	int y = 0;
@@ -118,23 +129,37 @@ public class Board extends JComponent {
 	}
 
 	private Block getRandomBlock() {
-		ArrayList<Integer> rouletteList = rouletteWheelSelection.get(gamepanel.difficulty);
-		int sum = 0;
-		for (int i:rouletteList) sum+=i;
+		int[] rouletteList = rouletteWheelSelection.get(gamepanel.difficulty);
+		int sum = rouletteList[0];
 		int block = random.nextInt(sum); block++;
-		// 룰렛 시스템을 위한 switch-case가 아닌 if-else문 사용
-		for (int i = 0; i < rouletteList.size(); i++) {
-			int num = rouletteList.get(i);
+		for (int i = 1; i < rouletteList.length; i++) {
+			int num = rouletteList[i];
 			if (num >= block) {
 				try {
-					return blockList.get(i).clone();
+					return blockList[i-1].createNew();
 				} catch (Exception e) {e.printStackTrace();}
 			} 
 			else {block -= num;}
 		}
 		return null;
 	}
-	
+
+	private Block getRandomItemBlock() {
+		int[] itemRouletteList = rouletteWheelSelection.get("Item");
+		int itemSum = itemRouletteList[0];
+		int block = random.nextInt(itemSum); block++;
+		for (int i = 1; i < itemRouletteList.length; i++) {
+			int num = itemRouletteList[i];
+			if (num >= block) {
+				try {
+					return itemList[i-1].createNew();
+				} catch (Exception e) {e.printStackTrace();}
+			} 
+			else {block -= num;}
+		}
+		return null;
+	}
+
 	private void placeBlock() {
 		int dy = y; int dx = x;
 		while(canDown(dx, dy)) dy++;
@@ -149,7 +174,10 @@ public class Board extends JComponent {
 			for(int i=0; i<curr.width(); i++) {
 				if (curr.getShape(i, j) > 0) {
 					board[y+j][x+i] += curr.getShape(i, j);
-					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk("O", curr.getColor()));
+					Color color;
+					if (curr.getText(i, j).equals("O")) color = curr.getColor();
+					else color = Color.WHITE;
+					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk(curr.getText(i, j), color));
 				}
 			}
 		}
@@ -189,10 +217,6 @@ public class Board extends JComponent {
 		return CollisionRules.canLeft(board, curr, x, y);
 	}
 
-	protected boolean canRotate() {
-		return rotationPosition() != null;
-	}
-
 	private int[] rotationPosition() {
 		return CollisionRules.rotationPosition(board, curr, x, y);
 	}
@@ -225,6 +249,8 @@ public class Board extends JComponent {
 
 		if (isgameover()) return false;
 		curr = next;
+				if (islevelUp() && gamepanel.gameMode.equals("Item")) {next = getRandomItemBlock();} 
+		else {next = getRandomItemBlock();} // TODO
 		next = blockGenerator.nextBlock();
 		this.gamepanel.drawNextBoard(next);
 
@@ -265,32 +291,35 @@ public class Board extends JComponent {
 		this.board = new int[HEIGHT][WIDTH];
 	}
 
-	protected void eraseLine() {
-		int[] tmp;
-		ArrayList<TextChunk> tmp_t = new ArrayList<>();
+	protected void eraseFullLine() {
 		int combo = 1;
 		for (int i = 0; i < HEIGHT; i++) {
 			int[] line = board[i];
 			if (!Arrays.stream(line).anyMatch(t -> t == 0)) {
-				// TODO
-				eraseAnimation(i);
-				SecondaryLoop loop = Toolkit.getDefaultToolkit().getSystemEventQueue().createSecondaryLoop();
-				this.currentLoop = loop;
-				loop.enter();
-				for (int j = i - 1; j >= 0; j--) {
-					tmp = board[j];
-					tmp_t = new ArrayList<>(textChunks.subList((j+1)*(WIDTH+3), (j+2)*(WIDTH+3)));
-					board[j+1] = tmp;
-					textChunks.subList((j+2)*(WIDTH+3), (j+3)*(WIDTH+3)).clear();
-					textChunks.addAll((j+1)*(WIDTH+3), tmp_t);
-				}
-				board[0] = new int[WIDTH];
-				for (int k = WIDTH+3+1; k < 2*(WIDTH+2); k++) textChunks.set(k, new TextChunk(" ", Color.WHITE));
+				eraseColumnLine(i);
 				addScore(LINEPOINT * combo);
 				combo++;
-				if ((++erasedLineNum % 10) == 0) levelUp();
+				erasedLineNum++;
 			}
 		}
+	}
+
+	private void eraseColumnLine(int i) {
+		int[] tmp;
+		ArrayList<TextChunk> tmp_t = new ArrayList<>();
+		eraseAnimation(i);
+		SecondaryLoop loop = Toolkit.getDefaultToolkit().getSystemEventQueue().createSecondaryLoop();
+		this.currentLoop = loop;
+		loop.enter();
+		for (int j = i - 1; j >= 0; j--) {
+			tmp = board[j];
+			tmp_t = new ArrayList<>(textChunks.subList((j+1)*(WIDTH+3), (j+2)*(WIDTH+3)));
+			board[j+1] = tmp;
+			textChunks.subList((j+2)*(WIDTH+3), (j+3)*(WIDTH+3)).clear();
+			textChunks.addAll((j+1)*(WIDTH+3), tmp_t);
+		}
+		board[0] = new int[WIDTH];
+		for (int k = WIDTH+3+1; k < 2*(WIDTH+2); k++) textChunks.set(k, new TextChunk(" ", Color.WHITE));
 	}
 
 	protected void eraseAnimation(int lineIndex) {
@@ -321,10 +350,15 @@ public class Board extends JComponent {
 		animationTimer.start();
 	}
 
-	private void levelUp() {
-		if (level < 19) level++;
-		int ms = (int) Math.round((Math.pow((0.8 - (level - 1) * 0.007), (level - 1)) * 1000));
-		timer.setDelay(ms);
+	private boolean islevelUp() {
+		if (((erasedLineNum / 10) + 1) == level) return false;
+		else {
+			level++;
+			int maximumLevel = Math.min(level, 19);
+			int ms = (int) Math.round((Math.pow((0.8 - (maximumLevel - 1) * 0.007), (maximumLevel - 1)) * 1000));
+			timer.setDelay(ms);
+			return true;
+		}
 	}
 
 	protected void addScore(int POINT) {

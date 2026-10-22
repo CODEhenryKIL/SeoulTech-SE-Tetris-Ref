@@ -54,8 +54,8 @@ public class Maincontainer extends JFrame{
         startPanel.requestFocusInWindow();
     }
     // Start 버튼 상호작용 함수
-    protected void exitStartEnterGame() { // 시작화면에서 시작 버튼을 눌러 게임화면으로 들어감을 알리는 메소드
-        gamePanel = new Gamepanel(this); // Gamepanel 객체 생성 및 container 객체 넘겨주기
+    protected void exitStartEnterGame(String gameMode) { // 시작화면에서 시작 버튼을 눌러 게임화면으로 들어감을 알리는 메소드
+        gamePanel = new Gamepanel(this, gameMode); // Gamepanel 객체 생성 및 container 객체 넘겨주기
         mainPanel.add(gamePanel, "GameScreen"); // mainPanel에 gamePanel 추가
         mainPanel.remove(startPanel); // 게임 화면으로 전환하면서 시작 화면을 루트 패널에서 제거한다.
         mainPanel.revalidate(); // 변경사항을 재계산

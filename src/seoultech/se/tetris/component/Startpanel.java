@@ -47,7 +47,7 @@ public class Startpanel extends JPanel{
         Button startButton = new Button("START") {
             @Override 
             protected void isPressed() {
-                Startpanel.this.maincontainer.exitStartEnterGame();
+                Startpanel.this.maincontainer.exitStartEnterGame("Normal");
             }
         };
         menu.add(buttonPanel, startButton);

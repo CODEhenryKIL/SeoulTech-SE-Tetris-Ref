@@ -39,11 +39,13 @@ public class Gamepanel extends JPanel{
     private int HEIGHT;
     private int WIDTH;
     private KeyListener playerKeyListener;
+    protected String gameMode;
 
-    public Gamepanel(Maincontainer maincontainer) {
+    public Gamepanel(Maincontainer maincontainer, String gameMode) {
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
+        this.gameMode = gameMode;
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
         difficulty = maincontainer.setting.currentSettingMap.get("difficulty").getCurrentSetting();
 

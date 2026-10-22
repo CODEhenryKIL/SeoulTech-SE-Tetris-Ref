@@ -9,6 +9,10 @@ public class ZBlock extends Block {
 			{1, 1, 0},
 			{0, 1, 1}
 		};
+		text = new String[][] {
+			{"O", "O", " "},
+			{" ", "O", "O"}
+		};
 		color = Color.RED;
 	}
 }
