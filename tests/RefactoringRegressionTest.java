@@ -83,6 +83,11 @@ public final class RefactoringRegressionTest {
         new Check("collision", "양쪽 벽·고정 블록·바닥 충돌", RefactoringRegressionTest::collision),
         new Check("blocked-rotation", "막힌 회전의 좌표·모양 유지", RefactoringRegressionTest::blockedRotation),
         new Check("hard-drop", "하드드롭 위치·점수·다음 블록 승계", RefactoringRegressionTest::hardDrop),
+        new Check("drop-input-score", "자동·수동 낙하와 하드드롭의 기존 점수·이동", RefactoringRegressionTest::dropInputScore),
+        new Check("lock-advance", "다섯 입력 경로의 바닥·고정 블록 위 고정과 미리보기 승계", RefactoringRegressionTest::lockAdvance),
+        new Check("lock-line-level", "두 낙하의 실제 고정을 통한 두 줄 삭제·레벨 경계", RefactoringRegressionTest::lockLineLevel),
+        new Check("lock-game-over", "고정 후 게임 오버 시 승계·난수 진행 없이 즉시 중단", RefactoringRegressionTest::lockGameOver),
+        new Check("lock-clear-before-game-over", "줄 삭제로 생성 자리가 비면 게임 오버 없이 다음 블록 배치", RefactoringRegressionTest::lockClearBeforeGameOver),
         new Check("line-clear", "한 줄·여러 줄 삭제와 기존 점수 규칙", RefactoringRegressionTest::lineClear),
         new Check("level-up", "누적 10줄 삭제 후 레벨·속도 변경", RefactoringRegressionTest::levelUp),
         new Check("pause-resume", "일시정지 중 입력 차단·타이머 재개", RefactoringRegressionTest::pauseResume),
@@ -658,6 +663,181 @@ public final class RefactoringRegressionTest {
             require(get(board, "curr") == next && board.x == 3 && board.y == 0, "미리보기 블록이 다음 현재 블록이 되어야 합니다.");
             require(board.getNextBlock() != null, "새 미리보기 블록이 생성되어야 합니다.");
         }
+    }
+
+    private enum DropInput { MOVE_DOWN, TIMER, DOWN_KEY, HARD_DROP, HARD_DROP_KEY }
+
+    private static void drop(GameFixture fixture, DropInput input, boolean expectedMove) {
+        switch (input) {
+            case MOVE_DOWN -> require(fixture.board.moveDown() == expectedMove, "moveDown 반환값이 바뀌면 안 됩니다.");
+            case TIMER -> {
+                for (var listener : fixture.initialTimer.getActionListeners()) {
+                    listener.actionPerformed(new java.awt.event.ActionEvent(fixture.initialTimer, 0, "regression-tick"));
+                }
+            }
+            case DOWN_KEY -> press(fixture.game, Maincontainer.DOWN);
+            case HARD_DROP -> fixture.board.hardDrop();
+            case HARD_DROP_KEY -> press(fixture.game, Maincontainer.HARD_DROP);
+        }
+    }
+
+    private static void dropInputScore() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                Block current = new OBlock();
+                prepare(board, current, 3, 0);
+                Block next = board.getNextBlock();
+                drop(fixture, input, true);
+                boolean hard = input == DropInput.HARD_DROP || input == DropInput.HARD_DROP_KEY;
+                int expected = hard ? 36 : input == DropInput.DOWN_KEY ? 2 : 1;
+                require(board.getScore() == expected, input + ": 1칸 자동/직접=1점, 수동=2점, 하드드롭=거리×2점을 유지해야 합니다.");
+                require(((JTextPane) get(fixture.game, "scorepanel")).getText().contains("\n" + expected), "화면 점수도 갱신되어야 합니다.");
+                require(board.x == 3 && board.y == (hard ? 0 : 1), input + ": 이동 후 좌표가 달라지면 안 됩니다.");
+                require(get(board, "curr") == (hard ? next : current), input + ": 하드드롭만 즉시 다음 블록으로 넘어가야 합니다.");
+                if (!hard) require(board.getNextBlock() == next, "이동만 할 때 미리보기 블록이 바뀌면 안 됩니다.");
+            }
+        }
+    }
+
+    private static void lockAdvance() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            for (boolean obstacle : new boolean[] {false, true}) {
+                try (GameFixture fixture = new GameFixture()) {
+                    Board board = fixture.board;
+                    int x = obstacle ? 3 : 0, y = obstacle ? 5 : 18;
+                    prepare(board, new OBlock(), x, y);
+                    if (obstacle) {
+                        call(board, "eraseCurr");
+                        fixedCell(board, 3, 7);
+                        call(board, "placeBlock");
+                    }
+                    Block next = board.getNextBlock();
+                    Random random = (Random) get(board, "random");
+                    random.setSeed(205);
+                    Random expected = new Random(205);
+                    String expectedNext = List.of("IBlock", "JBlock", "LBlock", "ZBlock", "SBlock", "TBlock", "OBlock").get(expected.nextInt(7));
+                    drop(fixture, input, false);
+                    require(board.getScore() == 0, input + ": 더 내려갈 수 없으면 낙하 점수를 추가하면 안 됩니다.");
+                    require(get(board, "curr") == next && board.x == 3 && board.y == 0, "미리보기 객체를 그대로 시작 좌표로 승계해야 합니다.");
+                    require(board.getNextBlock().getClass().getSimpleName().equals(expectedNext)
+                            && random.nextLong() == expected.nextLong(), "새 미리보기는 기존 생성기를 정확히 한 번 사용해야 합니다.");
+                    assertPreview(fixture.game, board.getNextBlock());
+                    for (int row = y; row < y + 2; row++) for (int col = x; col < x + 2; col++) {
+                        require(cells(board)[row][col] == 1, "기존 O블록을 제자리에 고정해야 합니다.");
+                        assertChunk(board, col, row, "O", java.awt.Color.YELLOW);
+                    }
+                    require(Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == (obstacle ? 9 : 8), "고정 블록과 새 현재 블록을 한 번씩만 배치해야 합니다.");
+                    assertChunk(board, 4, 0, "O", java.awt.Color.MAGENTA);
+                    if (!obstacle) {
+                        assertChunk(board, 4, 18, "O", java.awt.Color.DARK_GRAY);
+                        for (int col = 3; col <= 5; col++) assertChunk(board, col, 19, "O", java.awt.Color.DARK_GRAY);
+                    }
+                    require(get(fixture.game, "gameOverPanel") == null, "정상 고정에서 게임 오버를 표시하면 안 됩니다.");
+                }
+            }
+        }
+    }
+
+    private static void lockLineLevel() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                prepare(board, new OBlock(), 3, 18);
+                call(board, "eraseCurr");
+                fillLockLines(board);
+                fixedCell(board, 0, 17);
+                call(board, "placeBlock");
+                set(board, "erasedLineNum", 8);
+                Block next = board.getNextBlock();
+                drop(fixture, input, false);
+                require(board.getScore() == 300 && (int) get(board, "erasedLineNum") == 10, "고정한 O블록으로 두 줄을 지우고 기존 combo 점수를 적용해야 합니다.");
+                require((int) get(board, "level") == 2 && board.timer.getDelay() == 793, "10줄 경계에서 레벨과 타이머 간격을 갱신해야 합니다.");
+                require(cells(board)[19][0] == 1 && Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 5,
+                    "남은 고정 칸을 두 줄 내리고 새 블록을 한 번만 배치해야 합니다.");
+                assertChunk(board, 0, 19, "O", java.awt.Color.RED);
+                require(get(board, "curr") == next && board.x == 3 && board.y == 0, "줄 삭제 후에도 next 승계를 유지해야 합니다.");
+            }
+        }
+    }
+
+    private static void lockGameOver() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                Block current = new OBlock(), next = new OBlock();
+                prepare(board, current, 0, 18);
+                set(board, "next", next);
+                fixedCell(board, 3, 0);
+                fixture.game.drawNextBoard();
+                Object preview = get(get(fixture.game, "nextblockpanel"), "textChunks");
+                Random random = (Random) get(board, "random");
+                random.setSeed(205);
+                fixture.initialTimer.start();
+                drop(fixture, input, false);
+                require(board.timer == null && !fixture.initialTimer.isRunning() && get(fixture.game, "gameOverPanel") != null,
+                    "두 낙하 경로 모두 타이머를 종료하고 게임 오버를 표시해야 합니다.");
+                require(get(board, "curr") == current && board.getNextBlock() == next && board.x == 0 && board.y == 18,
+                    "게임 오버 뒤 curr/next·좌표를 바꾸면 안 됩니다.");
+                require(random.nextLong() == new Random(205).nextLong(), "게임 오버 뒤 새 난수를 소비하면 안 됩니다.");
+                require(get(get(fixture.game, "nextblockpanel"), "textChunks") == preview,
+                    "게임 오버 뒤 미리보기 표시를 새로 바꾸면 안 됩니다.");
+                assertPreview(fixture.game, next);
+                require(board.getScore() == 0 && cells(board)[0][3] == 1
+                        && Arrays.stream(cells(board)).flatMapToInt(Arrays::stream).sum() == 5,
+                    "게임 오버 뒤 점수 추가나 다음 블록 중첩이 없어야 합니다.");
+            }
+        }
+    }
+
+    private static void lockClearBeforeGameOver() throws Exception {
+        for (DropInput input : DropInput.values()) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                prepare(board, new OBlock(), 3, 18);
+                call(board, "eraseCurr");
+                fillLockLines(board);
+                Block next = new OBlock();
+                set(board, "next", next);
+                fixedCell(board, 3, 0);
+                call(board, "placeBlock");
+                drop(fixture, input, false);
+                require(get(fixture.game, "gameOverPanel") == null && board.timer != null,
+                    "줄 삭제가 생성 자리를 비우면 게임 오버로 종료하면 안 됩니다.");
+                require(get(board, "curr") == next && board.getScore() == 300 && cells(board)[2][3] == 1,
+                    "줄 삭제를 게임 오버 판정보다 먼저 하고 다음 블록을 배치해야 합니다.");
+                require(cells(board)[0][3] == 1 && cells(board)[0][4] == 1 && cells(board)[1][3] == 1 && cells(board)[1][4] == 1,
+                    "비워진 시작 좌표에 O블록이 정상 배치되어야 합니다.");
+            }
+        }
+    }
+
+    private static void fillLockLines(Board board) throws Exception {
+        for (int row = 18; row < 20; row++) for (int col = 0; col < 10; col++) {
+            if (col != 3 && col != 4) fixedCell(board, col, row);
+        }
+    }
+
+    private static void assertPreview(Gamepanel game, Block next) throws Exception {
+        StringBuilder expected = new StringBuilder("      \n      \n");
+        for (int row = 0; row < next.height(); row++) {
+            expected.append(' ');
+            for (int col = 0; col < next.width(); col++) expected.append(next.getShape(col, row) == 0 ? ' ' : 'O');
+            expected.append('\n');
+        }
+        StringBuilder actual = new StringBuilder();
+        for (Object chunk : (List<?>) get(get(game, "nextblockpanel"), "textChunks")) {
+            actual.append(get(chunk, "text"));
+            require(get(chunk, "color").equals(next.getColor()), "미리보기 색이 새 next와 같아야 합니다.");
+        }
+        require(actual.toString().equals(expected.toString()), "미리보기 표시가 새 next 모양 전체와 같아야 합니다.");
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void assertChunk(Board board, int x, int y, String text, java.awt.Color color) throws Exception {
+        List<Board.TextChunk> chunks = (List<Board.TextChunk>) get(board, "textChunks");
+        Board.TextChunk chunk = chunks.get((y + 1) * 13 + x + 1);
+        require(chunk.text.equals(text) && chunk.color.equals(color), "표시 청크가 격자·블록 색과 일치해야 합니다: " + x + "," + y);
     }
 
     private static void lineClear() throws Exception {

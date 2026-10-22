@@ -239,18 +239,8 @@ public class Board extends JComponent {
 			placeBlock();
 			return true;
 		}
-		else {
-			placeBlock();
-			eraseLine();
-			if (isgameover()) return false;
-			curr = next;
-			next = getRandomBlock();
-			this.gamepanel.drawNextBoard();
-			x = 3;
-			y = 0;
-			placeBlock();
-			return false;
-		}
+		lockAndAdvanceBlock();
+		return false;
 	}
 
 	protected void hardDrop() {  // 하드 드롭 기능 구현
@@ -259,10 +249,15 @@ public class Board extends JComponent {
 			y++;
 			addScore(DOWNPOINT * 2);
 		}
+		if (!lockAndAdvanceBlock()) return;
+		drawBoard();
+	}
+
+	private boolean lockAndAdvanceBlock() {
 		placeBlock();
 		eraseLine();
 
-		if (isgameover()) return;
+		if (isgameover()) return false;
 		curr = next;
 		next = getRandomBlock();
 		this.gamepanel.drawNextBoard();
@@ -270,7 +265,7 @@ public class Board extends JComponent {
 		x = 3;
 		y = 0;
 		placeBlock();
-		drawBoard();
+		return true;
 	}
 
 	protected void moveRight() {
