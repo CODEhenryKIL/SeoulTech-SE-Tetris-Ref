@@ -22,4 +22,9 @@ public class AnchorBlock extends ItemBlock {
     public void rotate() {
         return;
     }
+
+	@Override 
+	public Block createNew() {
+		return new AnchorBlock();
+	}
 }

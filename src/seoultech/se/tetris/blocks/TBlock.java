@@ -15,4 +15,9 @@ public class TBlock extends Block {
 		};
 		color = Color.MAGENTA;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new TBlock();
+	}
 }

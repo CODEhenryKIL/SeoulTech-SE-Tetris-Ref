@@ -15,4 +15,9 @@ public class SBlock extends Block {
 		};
 		color = Color.GREEN;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new SBlock();
+	}
 }

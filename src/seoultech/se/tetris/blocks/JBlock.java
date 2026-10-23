@@ -15,4 +15,9 @@ public class JBlock extends Block {
 		};
 		color = Color.BLUE;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new JBlock();
+	}
 }

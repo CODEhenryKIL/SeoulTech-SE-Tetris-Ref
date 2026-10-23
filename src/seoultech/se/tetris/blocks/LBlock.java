@@ -15,4 +15,9 @@ public class LBlock extends Block {
 		};
 		color = Color.ORANGE;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new LBlock();
+	}
 }

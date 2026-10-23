@@ -13,4 +13,9 @@ public class IBlock extends Block {
 		};
 		color = Color.CYAN;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new IBlock();
+	}
 }

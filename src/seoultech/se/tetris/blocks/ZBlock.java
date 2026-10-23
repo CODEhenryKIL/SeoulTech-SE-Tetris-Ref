@@ -15,4 +15,9 @@ public class ZBlock extends Block {
 		};
 		color = Color.RED;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new ZBlock();
+	}
 }

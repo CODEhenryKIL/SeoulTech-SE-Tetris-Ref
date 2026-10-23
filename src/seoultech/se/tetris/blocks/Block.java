@@ -52,12 +52,5 @@ public abstract class Block {
 		return 0;
 	}
 
-	public Block createNew() {
-        try {
-            return this.getClass().getDeclaredConstructor().newInstance();
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null; // 예외 발생 시 처리
-        }
-    }
+	public Block createNew() {return null;}
 }

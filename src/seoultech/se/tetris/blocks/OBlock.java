@@ -15,4 +15,9 @@ public class OBlock extends Block {
 		};
 		color = Color.YELLOW;
 	}
+
+	@Override 
+	public Block createNew() {
+		return new OBlock();
+	}
 }

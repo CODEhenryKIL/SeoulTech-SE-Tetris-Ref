@@ -78,7 +78,7 @@ public class Scoreboardpanel extends JPanel{
         scorepanel.setText(sb.toString());
         StyledDocument doc = scorepanel.getStyledDocument();
         SimpleAttributeSet styleSet = new SimpleAttributeSet();
-		StyleConstants.setFontSize(styleSet, 25);
+		StyleConstants.setFontSize(styleSet, 20);
 		StyleConstants.setFontFamily(styleSet, "Courier");
         StyleConstants.setBold(styleSet, true);
 		StyleConstants.setForeground(styleSet, changeColor(Color.BLACK));
