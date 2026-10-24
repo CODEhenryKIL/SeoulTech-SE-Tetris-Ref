@@ -103,7 +103,32 @@ test_classes=$(mktemp -d)
 JaCoCo를 붙일 때는 Gradle의 JUnit worker만 계측해서는 내부 JVM의 제품 코드 실행이 잡히지 않는다.
 별도 실행기와 내부 검사 JVM까지 agent 적용/실행 데이터 수집을 설계하거나 테스트 실행 구조를 조정하고,
 알려진 제품 메서드가 실제 보고서에 포함되는지 확인해야 한다. 커버리지 구성은 TEST-07에서 진행한다.
-GitHub push/PR 자동 실행은 SETUP-08의 다음 작업이다.
+GitHub push/PR 자동 실행은 아래 CI 구성을 따른다.
+
+## GitHub Actions CI
+
+`.github/workflows/ci.yml`의 `Java CI`가 모든 브랜치의 push와 PR 생성/갱신 시 실행된다.
+GitHub의 Actions 탭에서 실행을 선택하거나 PR의 Checks에서 결과를 확인한다.
+fork에서 처음 사용하는 경우 해당 저장소의 Actions 활성화가 필요할 수 있다.
+
+| 검사 작업 | 실행 환경 | 명령 |
+|---|---|---|
+| `Build and test (windows-2025)` | Windows Server 2025, PowerShell, Temurin Java 21 | `./gradlew.bat --no-daemon --console=plain build` |
+| `Build and test (macos-26)` | macOS 26, Bash, Temurin Java 21 | `./gradlew --no-daemon --console=plain build` |
+
+두 작업은 독립 실행된다. 한 OS에서 실패해도 다른 OS의 검사는 계속 진행한다.
+같은 브랜치/PR에 새 변경이 올라오면 이전 실행을 취소하고 최신 변경을 검사한다.
+Gradle Wrapper의 공식 JAR 검증 후 빌드하며, 기존 JUnit 어댑터를 통해 52개 회귀 검사도 실행한다.
+검사가 실패하면 해당 작업이 실패로 표시된다. 외부 Action은 확인한 릴리스의 전체 commit SHA로 고정한다.
+
+성공·실패 모두 `test-reports-windows-2025`, `test-reports-macos-26` 아티팩트를 7일간 보관한다.
+실행 화면의 Artifacts에서 다운로드하면 JUnit XML/내부 회귀 로그, HTML 테스트 보고서,
+생성된 Gradle 문제 보고서를 볼 수 있다. 컴파일/환경 준비가 먼저 실패해 보고서가 없으면
+아티팩트 미생성 경고와 해당 단계의 로그를 확인한다.
+
+워크플로의 저장소 권한은 `contents: read`이며 checkout 인증 정보는 남기지 않는다.
+CI에 개인 토큰이나 배포용 secret은 필요 없다. Windows Server의 headless 검사 결과는
+Windows 11의 실제 게임 창·키 입력·설치 검증을 대신하지 않으며, 해당 검증은 TEST-06/RELEASE-04에서 진행한다.
 
 ## 공식 근거
 
