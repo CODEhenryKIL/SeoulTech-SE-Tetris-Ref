@@ -99,6 +99,7 @@ public class Settingpanel extends JPanel{
                     option.setText(maincontainer.setting.nextDifficulty());
                 }
             };
+            menu.add(settingPanel, difficultyOption);
             // 모든 설정을 기본값으로 되돌린다.
             resetSettingOption = new OptionButton("Reset setting", null) {
                 @Override 

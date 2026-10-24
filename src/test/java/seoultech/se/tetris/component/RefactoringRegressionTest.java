@@ -51,7 +51,7 @@ public final class RefactoringRegressionTest {
     private static final String DEFAULT_KEYS = "ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
     private static final String CUSTOM_KEYS = "ROTATE=87,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
     private static final String[] START_LABELS = {"CLASSIC", "ITEM", "MENU", "SCORE", "EXIT"};
-    private static final String[] SETTING_LABELS = {"Window Option: ", "Change Keys", "Reset Scoreboard", "Color Option: ", "Reset setting", "Save and Exit"};
+    private static final String[] SETTING_LABELS = {"Window Option: ", "Change Keys", "Reset Scoreboard", "Color Option: ", "Difficulty: ", "Reset setting", "Save and Exit"};
     private static final String[] KEY_LABELS = {"Rotate: ", "Down: ", "Left: ", "Right: ", "Pause: ", "Hard Drop: ", "Save and Exit"};
 
     @FunctionalInterface
@@ -462,7 +462,7 @@ public final class RefactoringRegressionTest {
         Maincontainer owner = owner("keySetting:" + CUSTOM_KEYS + "\nwindowSize:900X750\ncolorBlind:Tritanopia\n");
         require(value(owner.setting, "keySetting").equals(CUSTOM_KEYS), "초기화 전 사용자 키가 로드되어야 합니다.");
         Settingpanel panel = new Settingpanel(owner);
-        for (int i = 0; i < 4; i++) call(panel, "selectDown");
+        for (int i = 0; i < 5; i++) call(panel, "selectDown");
         call(panel, "selectEnter"); // 실제 Reset setting 메뉴 실행.
         owner.setting.exportSetting();
         Maincontainer.Setting loaded = owner.new Setting();

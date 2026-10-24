@@ -34,7 +34,7 @@ class DifficultyUiTest {
     @Test
     void startMenuKeepsFiveActionsAndSavedDifficultyRoundTrips() throws Exception {
         System.setProperty("tetris.dataDir", temporary.toString());
-        Maincontainer owner = owner();
+        TestMaincontainer owner = owner();
         Startpanel start = new Startpanel(owner);
 
         assertEquals(5, menuSize(start));
@@ -42,13 +42,53 @@ class DifficultyUiTest {
             assertEquals(action, label(start, action).getText());
         }
 
-        // Only the persisted field is part of this integration check. The missing
-        // settings-menu registration from PR #15 remains a tracked Req2 follow-up.
         assertEquals("Easy", owner.setting.getDifficulty());
         assertEquals("Normal", owner.setting.nextDifficulty());
 
         owner.setting.exportSetting();
         assertEquals("Normal", owner.new Setting().getDifficulty());
+    }
+
+    @Test
+    void settingsMenuCyclesSavesResetsAndAppliesDifficultyToNewGame() throws Exception {
+        System.setProperty("tetris.dataDir", temporary.toString());
+        TestMaincontainer owner = owner();
+        Settingpanel settings = new Settingpanel(owner);
+
+        assertEquals(7, menuSize(settings));
+        assertEquals("Difficulty: ", label(settings, "Difficulty: ").getText());
+        assertEquals("Easy", label(settings, "Easy").getText());
+
+        for (int i = 0; i < 4; i++) press(settings, KeyEvent.VK_DOWN);
+        for (String difficulty : List.of("Normal", "Hard", "Easy", "Normal", "Hard")) {
+            press(settings, KeyEvent.VK_ENTER);
+            assertEquals(difficulty, owner.setting.getDifficulty());
+            assertEquals(difficulty, label(settings, difficulty).getText());
+        }
+
+        press(settings, KeyEvent.VK_DOWN);
+        press(settings, KeyEvent.VK_DOWN);
+        press(settings, KeyEvent.VK_ENTER);
+        assertTrue(owner.settingsExitRequested);
+        Maincontainer reloadedOwner = owner();
+        assertEquals("Hard", reloadedOwner.setting.getDifficulty());
+        assertEquals(Difficulty.HARD, reloadedOwner.getDifficulty());
+        Gamepanel game = new Gamepanel(reloadedOwner);
+        try {
+            assertEquals(Difficulty.HARD, game.getDifficulty());
+        } finally {
+            stopBoardTimer(game);
+        }
+
+        press(settings, KeyEvent.VK_UP);
+        press(settings, KeyEvent.VK_ENTER);
+        assertEquals("Easy", owner.setting.getDifficulty());
+        assertEquals("Easy", label(settings, "Easy").getText());
+        owner.settingsExitRequested = false;
+        press(settings, KeyEvent.VK_DOWN);
+        press(settings, KeyEvent.VK_ENTER);
+        assertTrue(owner.settingsExitRequested);
+        assertEquals("Easy", owner().setting.getDifficulty());
     }
 
     @Test
@@ -87,13 +127,30 @@ class DifficultyUiTest {
             document.getCharacterElement(last).getAttributes()));
     }
 
-    private static Maincontainer owner() throws Exception {
+    private static TestMaincontainer owner() throws Exception {
         Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
         unsafeField.setAccessible(true);
-        Maincontainer owner = (Maincontainer) ((Unsafe) unsafeField.get(null))
-            .allocateInstance(Maincontainer.class);
+        TestMaincontainer owner = (TestMaincontainer) ((Unsafe) unsafeField.get(null))
+            .allocateInstance(TestMaincontainer.class);
         owner.setting = owner.new Setting();
+        owner.setDifficulty(Difficulty.parse(owner.setting.getDifficulty()).orElse(Difficulty.NORMAL));
         return owner;
+    }
+
+    private static final class TestMaincontainer extends Maincontainer {
+        private static final long serialVersionUID = 1L;
+        private boolean settingsExitRequested;
+
+        @Override
+        protected void exitSettingEnterStart() {
+            settingsExitRequested = true;
+        }
+    }
+
+    private static void stopBoardTimer(Gamepanel game) throws Exception {
+        Field boardField = Gamepanel.class.getDeclaredField("board");
+        boardField.setAccessible(true);
+        ((Board) boardField.get(game)).timer.stop();
     }
 
     private static void press(javax.swing.JPanel panel, int keyCode) {
