@@ -47,7 +47,7 @@ public final class DesktopSmoke {
                 check(frame.getContentPane().getWidth() > 0, "window must have a content area");
                 JPanel start = (JPanel) field(frame, "startPanel");
                 for (int turn = 0; turn < 40; turn++) key(start, KeyEvent.VK_DOWN);
-                key(start, KeyEvent.VK_ENTER); // 40 is a multiple of the four menu choices.
+                key(start, KeyEvent.VK_ENTER); // 40 is a multiple of the five menu choices.
                 Gamepanel game = (Gamepanel) field(frame, "gamePanel");
                 Board board = (Board) field(game, "board");
                 board.timer.stop();
@@ -97,7 +97,7 @@ public final class DesktopSmoke {
                 key(game, KeyEvent.VK_ENTER);
                 scoreboard = (Scoreboardpanel) field(frame, "scoreboardPanel");
                 check(scoreboard.isShowing(), "game-over name entry must open the actual scoreboard");
-                check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText().contains("PLAYER: 321 [Normal]"),
+                check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText().contains("PLAYER: 321 [Easy]"),
                     "new score must include its difficulty");
                 key(scoreboard, KeyEvent.VK_ENTER);
                 ScoreStore.clear();

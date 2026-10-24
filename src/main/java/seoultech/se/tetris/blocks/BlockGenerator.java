@@ -45,6 +45,16 @@ public final class BlockGenerator implements Serializable {
         return createBlock(index);
     }
 
+    public Block nextItemBlock() {
+        return switch (random.nextInt(4)) {
+            case 0 -> new AnchorBlock();
+            case 1 -> new BombBlock();
+            case 2 -> new RowBlock();
+            case 3 -> new ColumnBlock();
+            default -> throw new IllegalStateException("Unexpected item block index");
+        };
+    }
+
     private static Block createBlock(int index) {
         return switch (index) {
             case 0 -> new IBlock();

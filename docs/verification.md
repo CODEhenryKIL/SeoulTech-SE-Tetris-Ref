@@ -63,3 +63,15 @@ TEST-06과 RELEASE-04는 합성 입력/패키지 생성만으로 완료 처리�
 | macOS Apple Silicon | `b56948801e977c18c484761a827eb5eb5344afc9235d1032c87882424321e093` | [macOS package](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40085571922/artifacts/12556509597) |
 
 CI 보관 기간은 7일이다. 만료 시 동일 소스에서 개발 안내의 OS별 명령으로 다시 생성·검증한다. CI 성공은 위에서 명시한 실제 Windows 11/사용자 환경 검증의 남은 조건을 해소하지 않는다.
+
+## PR #15 이후 main 통합 검증 (2026-10-24)
+
+- 통합 기준: 요구사항 2 PR #15의 main merge commit `729ceaf`를 요구사항 1 브랜치에 반영.
+- 시작 메뉴를 CLASSIC·ITEM·MENU·SCORE·EXIT에 맞추고, 기존 회귀 검사의 탐색 인덱스와 미리보기 여백 색 기대값을 현재 화면에 맞게 조정. 독립 검사 55개는 그대로 유지.
+- Java 21 `./gradlew --offline --no-daemon --console=plain build desktopSmoke packageRelease` 성공(1분 50초). JUnit 17개(독립 회귀 55/55 어댑터 포함), 실패·오류 0.
+- 모든 제품 클래스 line coverage: 1,068 covered / 436 missed = **71.01%**. 아이템 코드를 포함해 측정하며 제품 제외·70% 기준 변경 없음. 아이템 전용 시나리오는 이번 요구사항 1 검증 범위에 추가하지 않았다.
+- 핵심 판정 400,000회 87ms / 5,000ms 예산.
+- 일반 행 삭제는 요구사항 1의 비차단 강조 표시를 유지한다. 아이템 전용 효과의 중첩 이벤트 루프는 main 구현을 유지하여 동일한 보장을 하지 않는다.
+- 요구사항 2 후속 범위: 난이도 선택 UI 누락, 아이템 애니메이션 중 일시정지·행 아이템 표시/점수·Anchor 동작, 난이도별 낙하 속도, 모드별 점수 메타데이터 및 신규 요구사항 검증. 이번 통합의 통과 결과는 요구사항 2 전체 완료를 의미하지 않는다.
+- 실제 Windows 11과 깨끗한 사용자 환경의 수동 검증은 위 TEST-06·RELEASE-04 조건대로 남는다.
+- 통합 후 macOS aarch64 실행 ZIP 생성과 SHA-256 대조, 런처·JAR·JVM·아이콘 포함 확인: `f81e3a206377364a36b803f3f4776cda1def49096d1d12a76d6852f986d7b06a`.

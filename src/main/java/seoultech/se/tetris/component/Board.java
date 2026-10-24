@@ -7,11 +7,14 @@ import java.awt.Insets;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.RenderingHints;
+import java.awt.SecondaryLoop;
+import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.geom.AffineTransform;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Collections;
 import static seoultech.se.tetris.component.Maincontainer.changeColor;
 
 import javax.swing.BorderFactory;
@@ -20,6 +23,11 @@ import javax.swing.Timer;
 import javax.swing.border.CompoundBorder;
 
 import seoultech.se.tetris.blocks.Block;
+import seoultech.se.tetris.blocks.AnchorBlock;
+import seoultech.se.tetris.blocks.BombBlock;
+import seoultech.se.tetris.blocks.ColumnBlock;
+import seoultech.se.tetris.blocks.ItemBlock;
+import seoultech.se.tetris.blocks.RowBlock;
 import seoultech.se.tetris.blocks.BlockGenerator;
 import seoultech.se.tetris.rules.CollisionRules;
 
@@ -32,6 +40,7 @@ public class Board extends JComponent {
 	protected static final int LINEPOINT = 100;
 	protected static final int DOWNPOINT = 1;
 	private Gamepanel gamepanel;
+    private SecondaryLoop currentLoop;
 	private int[][] board;
 	private ArrayList<TextChunk> textChunks;
 	protected Timer timer;
@@ -119,7 +128,7 @@ public class Board extends JComponent {
 			for(int i=0; i<curr.width(); i++) {
 				if (curr.getShape(i, j) > 0) {
 					board[y+j][x+i] += curr.getShape(i, j);
-					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk("O", curr.getColor()));
+					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk(curr.getText(i, j), curr.getText(i, j).equals("O") ? curr.getColor() : Color.WHITE));
 				}
 			}
 		}
@@ -190,18 +199,52 @@ public class Board extends JComponent {
 	}
 
 	private boolean lockAndAdvanceBlock() {
+        int clearedBefore = erasedLineNum;
 		placeBlock();
+        if (curr instanceof ItemBlock) useItem();
 		eraseLine();
 
 		if (isgameover()) return false;
 		curr = next;
-		next = blockGenerator.nextBlock(gamepanel.getDifficulty());
+        next = gamepanel.gameMode.equals("Item") && erasedLineNum / 10 > clearedBefore / 10
+            ? blockGenerator.nextItemBlock() : blockGenerator.nextBlock(gamepanel.getDifficulty());
 		this.gamepanel.drawNextBoard(next);
 
 		x = 3;
 		y = 0;
 		placeBlock();
 		return true;
+	}
+
+	protected void useItem() {
+		if (curr instanceof AnchorBlock) {
+			eraseCurr();
+			for (int i = y+curr.height(); i<HEIGHT; i++) {
+				for (int j = x; j < x+curr.width(); j++) {
+					board[i][j] = 0;
+					int idx = (i+1)*(WIDTH+3)+j+1;
+					textChunks.set(idx, new TextChunk(" ", Color.WHITE));
+				}
+			}
+			y = HEIGHT - curr.height();
+			placeBlock();
+		} else if (curr instanceof BombBlock) {
+			int startX = Math.max(0, x-2); int endX = Math.min(x+curr.width()+1, WIDTH-1);
+			int startY = Math.max(0, y-2); int endY = Math.min(y+curr.height()+1, HEIGHT-1);
+			for (int i = startY; i<=endY; i++) {
+				for (int j = startX; j<=endX; j++) {
+					board[i][j] = 0;
+					int idx = (i+1)*(WIDTH+3)+j+1;
+					textChunks.set(idx, new TextChunk(" ", Color.WHITE));
+				}
+			}
+		} else if (curr instanceof RowBlock) {
+			int itemY = ((RowBlock)curr).getItemY();
+			eraseRowLine(y + itemY);
+		} else if (curr instanceof ColumnBlock) {
+			int itemX = ((ColumnBlock)curr).getItemX();
+			eraseColumnLine(x + itemX);
+		}
 	}
 
 	protected void moveRight() {
@@ -279,6 +322,89 @@ public class Board extends JComponent {
         clearAnimationTimer = null;
         clearingRows.clear();
     }
+
+	private void eraseRowLine(int row) {
+		int[] tmp;
+		ArrayList<TextChunk> tmp_t = new ArrayList<>();
+		eraseRowAnimation(row);
+		SecondaryLoop loop = Toolkit.getDefaultToolkit().getSystemEventQueue().createSecondaryLoop();
+		this.currentLoop = loop;
+		loop.enter();
+		for (int j = row - 1; j >= 0; j--) {
+			tmp = board[j];
+			tmp_t = new ArrayList<>(textChunks.subList((j+1)*(WIDTH+3), (j+2)*(WIDTH+3)));
+			board[j+1] = tmp;
+			textChunks.subList((j+2)*(WIDTH+3), (j+3)*(WIDTH+3)).clear();
+			textChunks.addAll((j+1)*(WIDTH+3), tmp_t);
+		}
+		board[0] = new int[WIDTH];
+		for (int k = WIDTH+3+1; k < 2*(WIDTH+2); k++) textChunks.set(k, new TextChunk(" ", Color.WHITE));
+	}
+
+	private void eraseColumnLine(int col) {
+		eraseColumnAnimation(col);
+		SecondaryLoop loop = Toolkit.getDefaultToolkit().getSystemEventQueue().createSecondaryLoop();
+		this.currentLoop = loop;
+		loop.enter();
+		for (int i = 0; i<HEIGHT; i++) {board[i][col] = 0;}
+	}
+
+	protected void eraseRowAnimation(int lineIndex) {
+		timer.stop();
+		int[] start = {(lineIndex+1)*(WIDTH+3)+1};
+		int[] end = {(lineIndex+2)*(WIDTH+3)-2};
+		int[] middle = {start[0] + ((end[0] - start[0]) / 2)};
+		int[] cnt = {0};
+		Collections.fill(textChunks.subList(start[0], end[0]), new TextChunk("O", Color.WHITE));
+		Timer animationTimer = new Timer(50, new ActionListener() {
+			@Override 
+			public void actionPerformed(ActionEvent e) {
+				if (cnt[0] >= 4) {
+					Timer t = (Timer) e.getSource();
+					timer.start();
+					t.stop();
+					if (currentLoop != null) {
+						currentLoop.exit();
+					}
+					return;
+				}
+				Collections.fill(textChunks.subList(middle[0], start[0]+end[0]-middle[0]), new TextChunk(" ", Color.WHITE));
+				drawBoard();
+				middle[0]--;
+				cnt[0]++;
+			}
+		});
+		animationTimer.start();
+	}
+
+	private void eraseColumnAnimation(int columnIndex) {
+		timer.stop();
+		int[] middle = {(HEIGHT / 2)-1};
+		int[] cnt = {0};
+		for (int i = 0; i<HEIGHT; i++) {textChunks.set((i+1)*(WIDTH+3)+columnIndex+1, new TextChunk("O", Color.WHITE));}
+		Timer animationTimer = new Timer(50, new ActionListener() {
+			@Override 
+			public void actionPerformed(ActionEvent e) {
+				if (cnt[0] >= HEIGHT/2) {
+					Timer t = (Timer) e.getSource();
+					timer.start();
+					t.stop();
+					if (currentLoop != null) {
+						currentLoop.exit();
+					}
+					return;
+				}
+				int idx1 = (middle[0]+1)*(WIDTH+3)+columnIndex+1;
+				int idx2 = (HEIGHT-middle[0])*(WIDTH+3)+columnIndex+1;
+				textChunks.set(idx1, new TextChunk(" ", Color.WHITE));
+				textChunks.set(idx2, new TextChunk(" ", Color.WHITE));
+				drawBoard();
+				middle[0]--;
+				cnt[0]++;
+			}
+		});
+		animationTimer.start();
+	}
 
 	private void levelUp() {
 		if (level < 19) level++;

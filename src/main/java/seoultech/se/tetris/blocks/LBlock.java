@@ -9,6 +9,15 @@ public class LBlock extends Block {
 			{1, 1, 1},
 			{1, 0, 0}
 		};
+		text = new String[][] {
+			{"O", "O", "O"},
+			{"O", " ", " "}
+		};
 		color = Color.ORANGE;
+	}
+
+	@Override 
+	public Block createNew() {
+		return new LBlock();
 	}
 }

@@ -5,10 +5,19 @@ import java.awt.Color;
 public abstract class Block {
 		
 	protected int[][] shape;
+	protected String[][] text;
 	protected Color color;
 	
 	public int getShape(int x, int y) {
 		return shape[y][x];
+	}
+
+	public String getText(int x, int y) {
+		return text[y][x];
+	}
+
+	public void setText(int x, int y, String s) {
+		text[y][x] = s;
 	}
 	
 	public Color getColor() {
@@ -23,7 +32,14 @@ public abstract class Block {
 				newshape[j][this.height() - i -1] = shape[i][j];
 			}
 		}
+		String[][] newText = new String[this.width()][this.height()];
+		for (int i = 0; i < this.height(); i++) {
+			for (int j = 0; j < this.width(); j++) {
+				newText[j][this.height() - i -1] = text[i][j];
+			}
+		}
 		shape = newshape;
+		text = newText;
 	}
 	
 	public int height() {
@@ -35,4 +51,6 @@ public abstract class Block {
 			return shape[0].length;
 		return 0;
 	}
+
+	public Block createNew() {return null;}
 }

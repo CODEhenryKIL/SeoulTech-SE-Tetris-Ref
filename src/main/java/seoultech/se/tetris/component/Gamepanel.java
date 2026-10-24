@@ -20,6 +20,7 @@ import seoultech.se.tetris.score.ScoreStore;
 public class Gamepanel extends JPanel{
     private Board board;
     private final Difficulty difficulty;
+    protected String gameMode;
     private Nextblockpanel nextblockpanel;
     private JTextPane scorepanel;
     private StyledDocument docScore;
@@ -37,9 +38,14 @@ public class Gamepanel extends JPanel{
     private KeyListener playerKeyListener;
 
     public Gamepanel(Maincontainer maincontainer) {
+        this(maincontainer, "Classic");
+    }
+
+    public Gamepanel(Maincontainer maincontainer, String gameMode) {
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
+        this.gameMode = gameMode;
         this.difficulty = maincontainer.getDifficulty();
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
 

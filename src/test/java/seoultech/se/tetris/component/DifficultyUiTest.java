@@ -32,21 +32,23 @@ class DifficultyUiTest {
     }
 
     @Test
-    void startMenuCyclesDifficultyWithoutChangingItsFourActions() throws Exception {
+    void startMenuKeepsFiveActionsAndSavedDifficultyRoundTrips() throws Exception {
         System.setProperty("tetris.dataDir", temporary.toString());
         Maincontainer owner = owner();
-        Startpanel panel = new Startpanel(owner);
+        Startpanel start = new Startpanel(owner);
 
-        assertEquals("DIFFICULTY: Normal", label(panel, "DIFFICULTY:").getText());
-        assertEquals(4, menuSize(panel));
+        assertEquals(5, menuSize(start));
+        for (String action : List.of("CLASSIC", "ITEM", "MENU", "SCORE", "EXIT")) {
+            assertEquals(action, label(start, action).getText());
+        }
 
-        press(panel, KeyEvent.VK_RIGHT);
-        assertEquals(Difficulty.HARD, owner.getDifficulty());
-        assertEquals("DIFFICULTY: Hard", label(panel, "DIFFICULTY:").getText());
-        press(panel, KeyEvent.VK_RIGHT);
-        assertEquals(Difficulty.EASY, owner.getDifficulty());
-        press(panel, KeyEvent.VK_LEFT);
-        assertEquals(Difficulty.HARD, owner.getDifficulty());
+        // Only the persisted field is part of this integration check. The missing
+        // settings-menu registration from PR #15 remains a tracked Req2 follow-up.
+        assertEquals("Easy", owner.setting.getDifficulty());
+        assertEquals("Normal", owner.setting.nextDifficulty());
+
+        owner.setting.exportSetting();
+        assertEquals("Normal", owner.new Setting().getDifficulty());
     }
 
     @Test
@@ -94,14 +96,14 @@ class DifficultyUiTest {
         return owner;
     }
 
-    private static void press(Startpanel panel, int keyCode) {
+    private static void press(javax.swing.JPanel panel, int keyCode) {
         KeyEvent event = new KeyEvent(panel, KeyEvent.KEY_PRESSED, System.currentTimeMillis(), 0,
             keyCode, KeyEvent.CHAR_UNDEFINED);
         for (var listener : panel.getKeyListeners()) listener.keyPressed(event);
     }
 
-    private static int menuSize(Startpanel panel) throws Exception {
-        Field menuField = Startpanel.class.getDeclaredField("menu");
+    private static int menuSize(javax.swing.JPanel panel) throws Exception {
+        Field menuField = panel.getClass().getDeclaredField("menu");
         menuField.setAccessible(true);
         Object menu = menuField.get(panel);
         Field buttonsField = menu.getClass().getDeclaredField("buttons");

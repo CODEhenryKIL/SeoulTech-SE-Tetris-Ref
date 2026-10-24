@@ -50,7 +50,7 @@ public final class RefactoringRegressionTest {
     private static final String MARKER = ".refactoring-test-sandbox";
     private static final String DEFAULT_KEYS = "ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
     private static final String CUSTOM_KEYS = "ROTATE=87,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32";
-    private static final String[] START_LABELS = {"START", "MENU", "SCORE", "EXIT"};
+    private static final String[] START_LABELS = {"CLASSIC", "ITEM", "MENU", "SCORE", "EXIT"};
     private static final String[] SETTING_LABELS = {"Window Option: ", "Change Keys", "Reset Scoreboard", "Color Option: ", "Reset setting", "Save and Exit"};
     private static final String[] KEY_LABELS = {"Rotate: ", "Down: ", "Left: ", "Right: ", "Pause: ", "Hard Drop: ", "Save and Exit"};
 
@@ -246,9 +246,9 @@ public final class RefactoringRegressionTest {
             require(get(owner, "startPanel") != previous, "시작 화면은 현재 정책대로 다시 생성해야 합니다.");
 
             Startpanel start = (Startpanel) get(owner, "startPanel");
-            press(start, KeyEvent.VK_ENTER); // 새 메뉴의 기본 선택 START가 실제 게임을 열어야 한다.
+            press(start, KeyEvent.VK_ENTER); // 새 메뉴의 기본 선택 CLASSIC이 실제 게임을 열어야 한다.
             Gamepanel game = (Gamepanel) get(owner, "gamePanel");
-            require(game != null && game.getParent() == root, "복귀한 메뉴의 START 입력으로 게임에 진입해야 합니다.");
+            require(game != null && game.getParent() == root, "복귀한 메뉴의 CLASSIC 입력으로 게임에 진입해야 합니다.");
             Board board = (Board) get(game, "board");
             board.timer.stop();
             owner.exitGameEnterStart();
@@ -269,10 +269,12 @@ public final class RefactoringRegressionTest {
         checkNavigation(start, menuButtons(start, START_LABELS));
         press(start, KeyEvent.VK_DOWN);
         press(start, KeyEvent.VK_DOWN);
+        press(start, KeyEvent.VK_DOWN);
         press(start, KeyEvent.VK_ENTER);
         require(((JPanel) get(owner, "scoreboardPanel")).getParent() == root, "SCORE에서 Enter를 누르면 점수판이 열려야 합니다.");
         owner.exitScoreboardEnterStart();
         start = (Startpanel) get(owner, "startPanel");
+        press(start, KeyEvent.VK_DOWN);
         press(start, KeyEvent.VK_DOWN);
         press(start, KeyEvent.VK_ENTER);
         Settingpanel setting = (Settingpanel) get(owner, "settingPanel");
@@ -359,7 +361,8 @@ public final class RefactoringRegressionTest {
         Startpanel second = new Startpanel(owner);
         List<JPanel> secondButtons = menuButtons(second, START_LABELS);
         press(first, KeyEvent.VK_DOWN);
-        assertSelection(firstButtons, 2);
+        press(first, KeyEvent.VK_DOWN);
+        assertSelection(firstButtons, 3);
         assertSelection(secondButtons, 0);
         press(first, KeyEvent.VK_ENTER);
         require(((JPanel) get(owner, "scoreboardPanel")).getParent() == root, "첫 화면의 Enter가 첫 화면에서 선택한 SCORE를 실행해야 합니다.");
@@ -419,7 +422,7 @@ public final class RefactoringRegressionTest {
         constructor.setAccessible(true);
         MenuButtons<JPanel> menu = (MenuButtons<JPanel>) get(panel, "menu");
         JPanel rejected = null;
-        for (int index = 4; index < 12; index++) {
+        for (int index = 5; index < 13; index++) {
             JPanel button = (JPanel) constructor.newInstance(panel, "EXTRA " + index);
             menu.add(parent, button);
             rejected = button;
@@ -466,6 +469,7 @@ public final class RefactoringRegressionTest {
         require(value(loaded, "keySetting").equals(DEFAULT_KEYS), "기본 키 복원 실패");
         require(value(loaded, "windowSize").equals("600X500"), "기본 창 크기 복원 실패");
         require(value(loaded, "colorBlind").equals("Normal"), "기본 색각 모드 복원 실패");
+        require(value(loaded, "difficulty").equals("Easy"), "기본 난이도 복원 실패");
     }
 
     private static void unknownSetting() throws Exception {
@@ -1183,7 +1187,8 @@ public final class RefactoringRegressionTest {
         StringBuilder actual = new StringBuilder();
         for (Object chunk : (List<?>) get(panel, "textChunks")) {
             actual.append(get(chunk, "text"));
-            require(get(chunk, "color").equals(next.getColor()), "미리보기 색이 새 next와 같아야 합니다.");
+            java.awt.Color expectedColor = "O".equals(get(chunk, "text")) ? next.getColor() : java.awt.Color.WHITE;
+            require(get(chunk, "color").equals(expectedColor), "미리보기의 블록 칸과 여백 색이 표시 규칙과 같아야 합니다.");
         }
         require(actual.toString().equals(expected.toString()), "미리보기 표시가 새 next 모양 전체와 같아야 합니다.");
     }
