@@ -4,9 +4,11 @@ import java.awt.Container;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.io.File;
+import java.io.PrintStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -115,6 +117,9 @@ public final class RefactoringRegressionTest {
     );
 
     public static void main(String[] args) throws Exception {
+        // Windows console encoding can differ from the UTF-8 log reader.
+        System.setOut(new PrintStream(System.out, true, StandardCharsets.UTF_8));
+        System.setErr(new PrintStream(System.err, true, StandardCharsets.UTF_8));
         if (args.length == 0) {
             System.exit(runAll());
         } else if (args.length == 3 && args[0].equals("--case")) {

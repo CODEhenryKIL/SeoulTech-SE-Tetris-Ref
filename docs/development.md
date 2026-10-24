@@ -77,6 +77,8 @@ build/                            생성된 클래스·보고서·개발용 아�
 기존 실행기의 `System.exit`이 JUnit 프로세스를 종료하지 않으며, 실패 종료 코드는 JUnit 실패와
 Gradle 명령 실패로 전달된다. 전체 실행이 5분을 넘으면 자식 프로세스를 종료하고 실패 처리한다.
 JUnit 검사가 발견되지 않는 경우에도 빌드를 실패시킨다.
+기존 실행기는 진입 시 표준 출력과 오류 출력을 UTF-8로 명시해 부모/내부 검사 JVM의 로그를
+같은 인코딩으로 읽는다. Windows 기본 콘솔 인코딩이 달라도 한글 결과와 실패 원인을 보존한다.
 
 - HTML 보고서: `build/reports/tests/test/index.html`
 - XML 결과와 내부 52개 실행 로그: `build/test-results/test/TEST-seoultech.se.tetris.component.LegacyRegressionTest.xml`의 `system-out`
@@ -137,3 +139,6 @@ Windows 11의 실제 게임 창·키 입력·설치 검증을 대신하지 않�
 - [Gradle JVM testing](https://docs.gradle.org/9.8.2/userguide/java_testing.html): JUnit Platform·검사 실패 처리
 - [Gradle 공식 체크섬](https://gradle.org/release-checksums/): ZIP 및 Wrapper JAR 검증
 - [JUnit 5.14.1 Gradle 설정](https://docs.junit.org/5.14.1/running-tests/build-support.html): BOM·Jupiter·Launcher 구성
+- [GitHub 호스팅 실행 환경](https://docs.github.com/en/actions/reference/runners/github-hosted-runners): Windows/macOS 실행 환경
+- [Gradle setup-gradle](https://github.com/gradle/actions/blob/v6.4.0/docs/setup-gradle.md): Wrapper 검증과 캐시
+- [GitHub 테스트 산출물 보관](https://docs.github.com/en/actions/tutorials/store-and-share-data): 아티팩트 업로드와 보관 기간
