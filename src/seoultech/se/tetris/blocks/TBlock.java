@@ -9,6 +9,15 @@ public class TBlock extends Block {
 			{0, 1, 0},
 			{1, 1, 1}
 		};
+		text = new String[][] {
+			{" ", "O", " "},
+			{"O", "O", "O"}
+		};
 		color = Color.MAGENTA;
+	}
+
+	@Override 
+	public Block createNew() {
+		return new TBlock();
 	}
 }

@@ -61,14 +61,14 @@ public class Scoreboardpanel extends JPanel{
 		setFocusable(true);
 		requestFocus();
     }
-
+    
     public void drawScore() {
         List<ScoreStore.Score> loadedScores = ScoreStore.readRanked();
         int totalusernum = loadedScores.size();
         StringBuffer sb = new StringBuffer();
         int counter = 1;
         for (int j = 0; j < Math.min(totalusernum, 10); j++) {
-            sb.append(counter + ".\t" + loadedScores.get(j).username() + ": " + loadedScores.get(j).score() + "\n");
+            sb.append(counter + ".\t" + loadedScores.get(j).username() + ": " + loadedScores.get(j).score() + " (" + loadedScores.get(j).difficulty() + ")" + "\n");
             counter++;
         }
         for (int k = 0; k < 10 - Math.min(totalusernum, 10); k++) {
@@ -78,7 +78,7 @@ public class Scoreboardpanel extends JPanel{
         scorepanel.setText(sb.toString());
         StyledDocument doc = scorepanel.getStyledDocument();
         SimpleAttributeSet styleSet = new SimpleAttributeSet();
-		StyleConstants.setFontSize(styleSet, 25);
+		StyleConstants.setFontSize(styleSet, 20);
 		StyleConstants.setFontFamily(styleSet, "Courier");
         StyleConstants.setBold(styleSet, true);
 		StyleConstants.setForeground(styleSet, changeColor(Color.BLACK));
@@ -86,7 +86,7 @@ public class Scoreboardpanel extends JPanel{
         doc.setCharacterAttributes(0, doc.getLength(), styleSet, false);
         scorepanel.setStyledDocument(doc);
     }
-
+    
     public class PlayerKeyListener implements KeyListener {
 		@Override
 		public void keyTyped(KeyEvent e) {
@@ -105,6 +105,7 @@ public class Scoreboardpanel extends JPanel{
 		public void keyReleased(KeyEvent e) {
 		}
 	}
+
     protected void selectEnter() {
         this.maincontainer.exitScoreboardEnterStart();
     }

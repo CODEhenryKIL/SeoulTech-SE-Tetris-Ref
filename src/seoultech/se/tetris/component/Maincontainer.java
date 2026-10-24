@@ -17,15 +17,16 @@ import java.util.List;
 // 창을 구성하는 클래스입니다.
 public class Maincontainer extends JFrame{
 
-    private static int HEIGHT = 600;
-    private static int WIDTH = 500;
-    protected static int ROTATE = 38;
-    protected static int DOWN = 40;
-    protected static int LEFT = 37;
-    protected static int RIGHT = 39;
-    protected static int PAUSE = 80;
-    protected static int HARD_DROP = 32;
-    protected static String colorPalette = "Normal"; // Normal, Protanopia, Deuteranopia, Tritanopia 중 선택한 색상 모드
+    private static int HEIGHT;
+    private static int WIDTH;
+    protected static int ROTATE;
+    protected static int DOWN;
+    protected static int LEFT;
+    protected static int RIGHT;
+    protected static int PAUSE;
+    protected static int HARD_DROP;
+    protected static String colorPalette;
+    protected static String difficulty;
     protected Setting setting;
     private JPanel mainPanel; // 시작·게임·설정·점수판 화면을 담는 루트 패널
     private CardLayout cardLayout; // mainPanel에 등록한 화면 사이의 전환을 담당한다.
@@ -53,8 +54,8 @@ public class Maincontainer extends JFrame{
         startPanel.requestFocusInWindow();
     }
     // Start 버튼 상호작용 함수
-    protected void exitStartEnterGame() { // 시작화면에서 시작 버튼을 눌러 게임화면으로 들어감을 알리는 메소드
-        gamePanel = new Gamepanel(this); // Gamepanel 객체 생성 및 container 객체 넘겨주기
+    protected void exitStartEnterGame(String gameMode) { // 시작화면에서 시작 버튼을 눌러 게임화면으로 들어감을 알리는 메소드
+        gamePanel = new Gamepanel(this, gameMode); // Gamepanel 객체 생성 및 container 객체 넘겨주기
         mainPanel.add(gamePanel, "GameScreen"); // mainPanel에 gamePanel 추가
         mainPanel.remove(startPanel); // 게임 화면으로 전환하면서 시작 화면을 루트 패널에서 제거한다.
         mainPanel.revalidate(); // 변경사항을 재계산
@@ -98,13 +99,18 @@ public class Maincontainer extends JFrame{
     }
 
     private void applySetting() {
-        String[] windowDimensions = setting.getWindowSize().split("X");
-        HEIGHT = Integer.parseInt(windowDimensions[0]); WIDTH = Integer.parseInt(windowDimensions[1]);
+        // windowSize
+        String[] h_w = setting.getWindowSize().split("X");
+        HEIGHT = Integer.parseInt(h_w[0]); WIDTH = Integer.parseInt(h_w[1]);
+        // key
         Integer[] keys = setting.getKeyCodes();
         ROTATE = keys[0]; DOWN = keys[1]; LEFT = keys[2]; RIGHT = keys[3]; PAUSE = keys[4]; HARD_DROP = keys[5];
+        // colorBlind
         colorPalette = setting.getColorPalette();
-        
-        // 기존 루트 패널에 설정 크기와 배경을 적용한다.
+        // difficulty
+        difficulty = setting.getDifficulty();
+
+        // container에 띄우기 위한 빈 panel
         mainPanel.setPreferredSize(new Dimension(WIDTH, HEIGHT));
         mainPanel.setBackground(Color.BLACK);
         mainPanel.setOpaque(true);
@@ -116,7 +122,6 @@ public class Maincontainer extends JFrame{
     // 게임 설정 크기는 제목 표시줄·테두리를 포함한 JFrame의 실제 크기와 구분한다.
     public int getConfiguredWidth() {return WIDTH;}
     public int getConfiguredHeight() {return HEIGHT;}
-
     public static Color changeColor(Color exColor) {
         Color newColor = exColor;
         int r = exColor.getRed(); int g = exColor.getGreen();
@@ -167,8 +172,9 @@ public class Maincontainer extends JFrame{
         - 설정의 이름이 될 값을 String으로 지정해야 합니다.
         - 설정의 초기값이 될 값을 ArrayList<String> 목록의 가장 처음으로 할당해야 합니다.
         - 설정 변경은 항상 ArrayList<>에 담긴 순서대로 변경됩니다.
-        2. 키 배열은 getKeyCodes()/updateKeyCodes()로 읽고 저장
-        - 키 항목을 추가할 때는 KEY_NAMES, 기본값, 파일 검증과 화면 항목을 함께 확인합니다.
+        2. key와 관련된 값은 기존에 쓰던 별도의 메소드를 그대로 사용
+        - 만약 추가나 변경이 필요할 경우, isValidKeySetting()을 고쳐주시길 바랍니다.
+        3. 설정 값이 추가 되었다면, 이를 반영해야하는 내용을 maincontainer의 applySetting()에 처리 방법을 기재해 주시길 바람
         */
         private static final String[] KEY_NAMES = {"ROTATE", "DOWN", "LEFT", "RIGHT", "PAUSE", "HARD_DROP"};
         private LinkedHashMap<String, SettingComponent> currentSettingMap;
@@ -177,7 +183,8 @@ public class Maincontainer extends JFrame{
             "keySetting", new ArrayList<>(List.of("ROTATE=38,DOWN=40,LEFT=37,RIGHT=39,PAUSE=80,HARD_DROP=32")),
             // 기존 설정 파일의 저장 항목을 유지한다. 점수 초기화는 ScoreStore.clear()가 수행한다.
             "resetScore", new ArrayList<>(List.of("false")),
-            "colorBlind", new ArrayList<>(List.of("Normal","Protanopia","Deuteranopia","Tritanopia"))
+            "colorBlind", new ArrayList<>(List.of("Normal","Protanopia","Deuteranopia","Tritanopia")),
+            "difficulty", new ArrayList<>(List.of("Easy","Normal","Hard"))
         ));
 
         public Setting() {
@@ -202,6 +209,15 @@ public class Maincontainer extends JFrame{
         protected String nextColorPalette() {
             currentSettingMap.get("colorBlind").changeSetting();
             return getColorPalette();
+        }
+
+        protected String getDifficulty() {
+            return currentSettingMap.get("difficulty").getCurrentSetting();
+        }
+
+        protected String nextDifficulty() {
+            currentSettingMap.get("difficulty").changeSetting();
+            return getDifficulty();
         }
 
         // 문자열에서 새 배열을 만들므로 화면의 편집이 저장된 값에 전파되지 않는다.
@@ -262,7 +278,7 @@ public class Maincontainer extends JFrame{
                 Integer[] keyCodes = parseKeyCodes(value);
                 for (int i = 0; i < keyCodes.length; i++) {
                     if (keyCodes[i] <= 0) return false;
-                    if (i == 4 && keyCodes[i] == KeyEvent.VK_ENTER) return false; //TODO? 엔터키를 하드드롭에도 금지시켜야하나요?
+                    if (i == 4 && keyCodes[i] == KeyEvent.VK_ENTER) return false;
                     for (int j = 0; j < i; j++) {
                         if (keyCodes[i].equals(keyCodes[j])) return false;
                     }

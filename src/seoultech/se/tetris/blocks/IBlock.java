@@ -8,6 +8,14 @@ public class IBlock extends Block {
 		shape = new int[][] { 
 			{1, 1, 1, 1}
 		};
+		text = new String[][] {
+			{"O", "O", "O", "O"}
+		};
 		color = Color.CYAN;
+	}
+
+	@Override 
+	public Block createNew() {
+		return new IBlock();
 	}
 }

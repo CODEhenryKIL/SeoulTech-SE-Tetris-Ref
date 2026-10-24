@@ -4,6 +4,7 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
@@ -17,6 +18,7 @@ import seoultech.se.tetris.score.ScoreStore;
 
 public class Gamepanel extends JPanel{
     private Board board;
+    protected String difficulty;
     private Nextblockpanel nextblockpanel;
     private JTextPane scorepanel;
     private StyledDocument docScore;
@@ -32,12 +34,15 @@ public class Gamepanel extends JPanel{
     private int HEIGHT;
     private int WIDTH;
     private KeyListener playerKeyListener;
+    protected String gameMode;
 
-    public Gamepanel(Maincontainer maincontainer) {
+    public Gamepanel(Maincontainer maincontainer, String gameMode) {
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
+        this.gameMode = gameMode;
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
+        difficulty = maincontainer.setting.getDifficulty();
 
         board = new Board(this);
         board.setBounds(10, 10, WIDTH*330/500, HEIGHT*580/600);
@@ -145,7 +150,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        ScoreStore.append(this.userName, this.score);
+        ScoreStore.append(this.userName, this.score, this.difficulty);
     }
 
     protected void gamePause() {
@@ -199,6 +204,10 @@ public class Gamepanel extends JPanel{
         remove(pausepanel);
         revalidate();
         repaint();
+    }
+
+    protected Block getNextBlock() {
+        return board.getNextBlock();
     }
 
     public class PlayerKeyListener implements KeyListener {

@@ -13,11 +13,11 @@ public final class ScoreStore {
 
     private ScoreStore() {}
 
-    public record Score(String username, int score) {}
+    public record Score(String username, int score, String difficulty) {}
 
-    public static void append(String username, int score) {
+    public static void append(String username, int score, String difficulty) {
         try {
-            Files.write(SCORE_FILE, List.of(username + ":" + score),
+            Files.write(SCORE_FILE, List.of(username + ":" + score + ":" + difficulty),
                 StandardOpenOption.CREATE, StandardOpenOption.APPEND);
         } catch (IOException e) {
             e.printStackTrace();
@@ -32,9 +32,9 @@ public final class ScoreStore {
                 for (String line : lines) {
                     if (line.trim().isEmpty()) continue;
                     String[] tokens = line.split(":");
-                    if (tokens.length == 2) {
+                    if (tokens.length == 3) {
                         try {
-                            scores.add(new Score(tokens[0].trim(), Integer.parseInt(tokens[1].trim())));
+                            scores.add(new Score(tokens[0].trim(), Integer.parseInt(tokens[1].trim()), tokens[2].trim()));
                         } catch (NumberFormatException e) {
                             e.printStackTrace();
                         }

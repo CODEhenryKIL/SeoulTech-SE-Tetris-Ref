@@ -99,7 +99,9 @@ public class Nextblockpanel extends JComponent{
 		} else {
             textChunks = new ArrayList<>();
 			for (String str : text.split("")) {
-				textChunks.add(new TextChunk(str, color));
+                Color c = color;
+                if (!str.equals("O")) c = Color.WHITE;
+				textChunks.add(new TextChunk(str, c));
 			}
 		}
 		repaint();
@@ -115,7 +117,7 @@ public class Nextblockpanel extends JComponent{
             sb.append(" ");
             for (int j = 0; j < next.width(); j++) {
                 if (next.getShape(j, i) == 0) sb.append(" ");
-                else sb.append("O");
+                else sb.append(next.getText(j, i));
             }
             sb.append("\n");
         }

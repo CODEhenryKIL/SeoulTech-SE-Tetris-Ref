@@ -9,6 +9,15 @@ public class JBlock extends Block {
 				{1, 1, 1},
 				{0, 0, 1}
 		};
+		text = new String[][] {
+				{"O", "O", "O"},
+				{" ", " ", "O"}
+		};
 		color = Color.BLUE;
+	}
+
+	@Override 
+	public Block createNew() {
+		return new JBlock();
 	}
 }
