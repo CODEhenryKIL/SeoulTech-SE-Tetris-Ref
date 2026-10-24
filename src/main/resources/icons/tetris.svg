@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" role="img" aria-labelledby="title desc">
+  <title id="title">SeoulTech Tetris icon</title>
+  <desc id="desc">A dark rounded square with a cyan T tetromino dropping toward colored blocks.</desc>
+  <defs>
+    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#101a32"/>
+      <stop offset="1" stop-color="#050914"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="48" width="928" height="928" rx="210" fill="url(#background)"/>
+  <rect x="80" y="80" width="864" height="864" rx="182" fill="none" stroke="#263858" stroke-width="18"/>
+  <g stroke="#07101f" stroke-width="18" stroke-linejoin="round">
+    <path fill="#45d7ef" d="M300 214h424v142H583v142H441V356H300z"/>
+    <path fill="#ffcc3f" d="M158 640h142v142H158zM300 640h142v142H300zM442 640h142v142H442zM584 640h142v142H584z"/>
+    <path fill="#fa5a78" d="M300 782h142v142H300zM442 782h142v142H442z"/>
+    <path fill="#76dc72" d="M584 782h142v142H584zM726 782h142v142H726z"/>
+  </g>
+  <path d="M512 532v74" stroke="#86efff" stroke-width="26" stroke-linecap="round"/>
+  <path d="m474 572 38 38 38-38" fill="none" stroke="#86efff" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

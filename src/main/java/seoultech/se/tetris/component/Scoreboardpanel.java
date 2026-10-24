@@ -68,7 +68,9 @@ public class Scoreboardpanel extends JPanel{
         StringBuffer sb = new StringBuffer();
         int counter = 1;
         for (int j = 0; j < Math.min(totalusernum, 10); j++) {
-            sb.append(counter + ".\t" + loadedScores.get(j).username() + ": " + loadedScores.get(j).score() + "\n");
+            ScoreStore.Score loaded = loadedScores.get(j);
+            String difficulty = loaded.hasDifficulty() ? " [" + loaded.difficulty().displayName() + "]" : "";
+            sb.append(counter + ".\t" + loaded.username() + ": " + loaded.score() + difficulty + "\n");
             counter++;
         }
         for (int k = 0; k < 10 - Math.min(totalusernum, 10); k++) {
@@ -78,13 +80,26 @@ public class Scoreboardpanel extends JPanel{
         scorepanel.setText(sb.toString());
         StyledDocument doc = scorepanel.getStyledDocument();
         SimpleAttributeSet styleSet = new SimpleAttributeSet();
-		StyleConstants.setFontSize(styleSet, 25);
+		StyleConstants.setFontSize(styleSet, 18);
 		StyleConstants.setFontFamily(styleSet, "Courier");
         StyleConstants.setBold(styleSet, true);
 		StyleConstants.setForeground(styleSet, changeColor(Color.BLACK));
 		StyleConstants.setLineSpacing(styleSet, -0.1f);
         doc.setCharacterAttributes(0, doc.getLength(), styleSet, false);
         scorepanel.setStyledDocument(doc);
+    }
+
+    void highlightScore(String name, int score, seoultech.se.tetris.Difficulty difficulty) {
+        String label = name + ": " + score + " [" + difficulty.displayName() + "]";
+        String text = scorepanel.getText();
+        int start = text.lastIndexOf("\t" + label + "\n");
+        if (start >= 0) start++;
+        if (start >= 0) {
+            SimpleAttributeSet highlight = new SimpleAttributeSet();
+            StyleConstants.setBackground(highlight, new Color(255, 225, 100));
+            StyleConstants.setBold(highlight, true);
+            scorepanel.getStyledDocument().setCharacterAttributes(start, label.length(), highlight, false);
+        }
     }
 
     public class PlayerKeyListener implements KeyListener {

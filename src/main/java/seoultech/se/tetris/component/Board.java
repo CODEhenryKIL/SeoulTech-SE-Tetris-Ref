@@ -42,6 +42,9 @@ public class Board extends JComponent {
 	private Block next;
 	private int erasedLineNum = 0;
 	private int level = 1;
+    private final java.util.BitSet clearingRows = new java.util.BitSet(HEIGHT);
+    private Timer clearAnimationTimer;
+    private long clearAnimationStarted;
 	int x = 3; //Default Position.
 	int y = 0;
 	
@@ -71,8 +74,8 @@ public class Board extends JComponent {
 	}
 
 	protected void boardStart() {
-		curr = blockGenerator.nextBlock();
-		next = blockGenerator.nextBlock();
+		curr = blockGenerator.nextBlock(gamepanel.getDifficulty());
+		next = blockGenerator.nextBlock(gamepanel.getDifficulty());
 		this.gamepanel.drawNextBoard(next);
 		StringBuffer sb = new StringBuffer();
 		for(int t=0; t<WIDTH+2; t++) sb.append(BORDER_CHAR); // 윗쪽 보더
@@ -167,7 +170,7 @@ public class Board extends JComponent {
 	protected boolean moveDown() {
 		eraseCurr();
 		if (canDown(x, y)) {
-			addScore(DOWNPOINT);
+			addScore(DOWNPOINT * level);
 			y++;
 			placeBlock();
 			return true;
@@ -180,7 +183,7 @@ public class Board extends JComponent {
 		eraseCurr();
 		while (canDown(x, y)) {
 			y++;
-			addScore(DOWNPOINT * 2);
+			addScore(DOWNPOINT * level);
 		}
 		if (!lockAndAdvanceBlock()) return;
 		drawBoard();
@@ -192,7 +195,7 @@ public class Board extends JComponent {
 
 		if (isgameover()) return false;
 		curr = next;
-		next = blockGenerator.nextBlock();
+		next = blockGenerator.nextBlock(gamepanel.getDifficulty());
 		this.gamepanel.drawNextBoard(next);
 
 		x = 3;
@@ -233,6 +236,11 @@ public class Board extends JComponent {
 	}
 
 	protected void eraseLine() {
+        java.util.BitSet fullRows = new java.util.BitSet(HEIGHT);
+        for (int row = 0; row < HEIGHT; row++) {
+            if (Arrays.stream(board[row]).allMatch(cell -> cell != 0)) fullRows.set(row);
+        }
+        if (!fullRows.isEmpty()) animateClearedRows(fullRows);
 		int[] tmp;
 		ArrayList<TextChunk> tmp_t = new ArrayList<>();
 		int combo = 1;
@@ -255,6 +263,23 @@ public class Board extends JComponent {
 		}
 	}
 
+    private void animateClearedRows(java.util.BitSet rows) {
+        stopAnimations();
+        clearingRows.or(rows);
+        clearAnimationStarted = System.nanoTime();
+        clearAnimationTimer = new Timer(30, event -> {
+            if (System.nanoTime() - clearAnimationStarted >= 210_000_000L) stopAnimations();
+            repaint();
+        });
+        clearAnimationTimer.start();
+    }
+
+    void stopAnimations() {
+        if (clearAnimationTimer != null) clearAnimationTimer.stop();
+        clearAnimationTimer = null;
+        clearingRows.clear();
+    }
+
 	private void levelUp() {
 		if (level < 19) level++;
 		int ms = (int) Math.round((Math.pow((0.8 - (level - 1) * 0.007), (level - 1)) * 1000));
@@ -272,6 +297,7 @@ public class Board extends JComponent {
 				if (board[i][j+3] + next.getShape(j, i) > 1) {
 					if (timer != null) {
 						timer.stop();
+                        stopAnimations();
 						timer = null;
 						gamepanel.gameOver();
 					}
@@ -330,6 +356,13 @@ public class Board extends JComponent {
 			g2d.setColor(changeColor(chunk.color)); // 콕 집은 그 색상으로 변경 🎨
 			g2d.drawString(chunk.text, currentX, currentY); // 그리기
 			currentX += fm.stringWidth(chunk.text); 
+        }
+        if (!clearingRows.isEmpty()) {
+            g2d.setColor(new Color(255, 255, 255, 160));
+            for (int row = clearingRows.nextSetBit(0); row >= 0; row = clearingRows.nextSetBit(row + 1)) {
+                g2d.fillRect(fm.stringWidth(" "), (row + 1) * singleLineHeight,
+                    fm.stringWidth(" ".repeat(WIDTH)), singleLineHeight);
+            }
         }
         g2d.setTransform(oldTransform); // 그래픽 상태 복원
     }

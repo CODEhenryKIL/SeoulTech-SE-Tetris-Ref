@@ -50,3 +50,9 @@ For further funcionality implementations, you need to change the design and impl
 여기 제시된 코드는 Java Swing을 사용하여 어떻게 게임을 구현해야 할지 힌트를 주기 위한 것입니다.  
 현재 디자인 및 구현은 앞으로 게임을 위한 다양한 기능을 구현하기에 적절한 상태가 아니니 단순한 참고용으로 사용하시기 바랍니다.  
 구현 과정에서 원하는 경우 다른 오픈소스 라이브러리 등을 가져와 사용해도 좋습니다.
+
+
+Release candidates include a Java 21 runtime and application icons. Run `./gradlew packageRelease`
+(on Windows, `gradlew.bat packageRelease`) on each target OS. See [the user guide](docs/user-guide.md)
+and [verification scope and results](docs/verification.md). `build` also enforces 70% line coverage;
+`desktopSmoke` checks a real JFrame using synthetic input in a graphical session.

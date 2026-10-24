@@ -6,13 +6,14 @@ import java.awt.event.KeyEvent;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
+import seoultech.se.tetris.storage.DataPaths;
 import java.nio.file.StandardOpenOption;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
+import seoultech.se.tetris.Difficulty;
 
 // 창을 구성하는 클래스입니다.
 public class Maincontainer extends JFrame{
@@ -26,6 +27,7 @@ public class Maincontainer extends JFrame{
     protected static int PAUSE = 80;
     protected static int HARD_DROP = 32;
     protected static String colorPalette = "Normal"; // Normal, Protanopia, Deuteranopia, Tritanopia 중 선택한 색상 모드
+    private Difficulty difficulty = Difficulty.NORMAL;
     protected Setting setting;
     private JPanel mainPanel; // 시작·게임·설정·점수판 화면을 담는 루트 패널
     private CardLayout cardLayout; // mainPanel에 등록한 화면 사이의 전환을 담당한다.
@@ -37,6 +39,8 @@ public class Maincontainer extends JFrame{
     public Maincontainer() {
         setting = new Setting();
         setTitle("SeoulTech SE Tetris");
+        java.net.URL icon = Maincontainer.class.getResource("/icons/tetris.png");
+        if (icon != null) setIconImage(new ImageIcon(icon).getImage());
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setResizable(false);
         cardLayout = new CardLayout();
@@ -66,6 +70,17 @@ public class Maincontainer extends JFrame{
         if (gamePanel != null && gamePanel.getParent() != null) mainPanel.remove(gamePanel);
         enterStart();
     }
+    protected void exitGameEnterScoreboard(String name, int score, seoultech.se.tetris.Difficulty difficulty) {
+        if (gamePanel != null) mainPanel.remove(gamePanel);
+        scoreboardPanel = new Scoreboardpanel(this);
+        if (name != null) scoreboardPanel.highlightScore(name, score, difficulty);
+        mainPanel.add(scoreboardPanel, "ScoreboardScreen");
+        cardLayout.show(mainPanel, "ScoreboardScreen");
+        mainPanel.revalidate();
+        mainPanel.repaint();
+        scoreboardPanel.requestFocusInWindow();
+    }
+
     // Setting 버튼 상호작용 함수
     protected void exitStartEnterSetting() {
         settingPanel = new Settingpanel(this);
@@ -116,6 +131,14 @@ public class Maincontainer extends JFrame{
     // 게임 설정 크기는 제목 표시줄·테두리를 포함한 JFrame의 실제 크기와 구분한다.
     public int getConfiguredWidth() {return WIDTH;}
     public int getConfiguredHeight() {return HEIGHT;}
+
+    public Difficulty getDifficulty() {
+        return difficulty == null ? Difficulty.NORMAL : difficulty;
+    }
+
+    protected void setDifficulty(Difficulty difficulty) {
+        this.difficulty = difficulty == null ? Difficulty.NORMAL : difficulty;
+    }
 
     public static Color changeColor(Color exColor) {
         Color newColor = exColor;
@@ -233,7 +256,7 @@ public class Maincontainer extends JFrame{
         }
 
         private void decodeSetting() {
-            Path path = Paths.get("setting.txt");
+            Path path = DataPaths.resolve("setting.txt");
             if (Files.exists(path)) {
                 try {
                     List<String> lines = Files.readAllLines(path);
@@ -286,7 +309,7 @@ public class Maincontainer extends JFrame{
         }
 
         protected void exportSetting() {
-            Path path = Paths.get("setting.txt");
+            Path path = DataPaths.resolve("setting.txt");
             StringBuffer sb = new StringBuffer();
             for (String line : getSettingList()) {
                 String str = line + ":" + currentSettingMap.get(line).getCurrentSetting() + "\n";

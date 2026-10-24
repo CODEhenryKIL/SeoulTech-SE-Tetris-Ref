@@ -71,11 +71,11 @@ build/                            생성된 클래스·보고서·개발용 아�
 
 `LegacyRegressionTest`는 JUnit 검사 1개로 기존 독립 실행 검사 전체를 실행하는 어댑터다.
 보고서의 JUnit 검사 수 1은 내부 회귀 검사가 1개라는 뜻이 아니다. 현재 내부 검사 수는 기존 52개와 경계 검사 3개를 합한 55개이며,
-기존 실행기가 각 검사를 별도 JVM/임시 폴더에서 수행한다. 기존 검사의 기대값은 바꾸지 않았다.
+기존 실행기가 각 검사를 별도 JVM/임시 폴더에서 수행한다. 점수·신규 난이도 기록 형식의 요구 결함 수정에 따른 기대값 변경은 `test-requirements.md`에 명시했다.
 
 어댑터는 Gradle이 전달한 전체 test runtime classpath와 Java 21로 별도 JVM을 시작한다.
 기존 실행기의 `System.exit`이 JUnit 프로세스를 종료하지 않으며, 실패 종료 코드는 JUnit 실패와
-Gradle 명령 실패로 전달된다. 전체 실행이 5분을 넘으면 자식 프로세스를 종료하고 실패 처리한다.
+Gradle 명령 실패로 전달된다. 전체 실행이 비계측 5분(커버리지 계측 시 10분)을 넘으면 자식 프로세스를 종료하고 실패 처리한다.
 JUnit 검사가 발견되지 않는 경우에도 빌드를 실패시킨다.
 기존 실행기는 진입 시 표준 출력과 오류 출력을 UTF-8로 명시해 부모/내부 검사 JVM의 로그를
 같은 인코딩으로 읽는다. Windows 기본 콘솔 인코딩이 달라도 한글 결과와 실패 원인을 보존한다.
@@ -142,3 +142,12 @@ Windows 11의 실제 게임 창·키 입력·설치 검증을 대신하지 않�
 - [GitHub 호스팅 실행 환경](https://docs.github.com/en/actions/reference/runners/github-hosted-runners): Windows/macOS 실행 환경
 - [Gradle setup-gradle](https://github.com/gradle/actions/blob/v6.4.0/docs/setup-gradle.md): Wrapper 검증과 캐시
 - [GitHub 테스트 산출물 보관](https://docs.github.com/en/actions/tutorials/store-and-share-data): 아티팩트 업로드와 보관 기간
+
+
+## 커버리지·성능·실제 창 검사·배포
+
+- `./gradlew clean build`: 독립 회귀 55개, 추가 JUnit 검사, 전체 제품 코드 line coverage 70% 검증. JaCoCo HTML/XML은 `build/reports/jacoco/test/`.
+- `./gradlew desktopSmoke`: 그래픽 세션에서 실제 JFrame을 띄우고 합성 KeyListener 입력으로 메뉴·반복 입력·정지/재개·설정·점수판·순위 진입/미진입을 검사한다. OS 물리 입력 검증을 대체하지 않는다. `build/reports/desktop/`에 결과·화면을 남긴다.
+- 성능 검사는 `PerformanceRegressionTest`에서 핵심 이동·회전 판정 400,000회를 5초 예산으로 검증하고 JUnit 로그에 환경·시간을 남긴다.
+- `./gradlew packageRelease`: 현재 OS의 Java 21 런타임 포함 앱 이미지 ZIP·SHA-256 생성. Windows에서는 `gradlew.bat` 사용. 배포 방식과 실행법은 [사용자 안내](user-guide.md), 검증 범위·한계는 [검증 기록](verification.md).
+- GitHub CI는 Windows Server 2025·macOS 26에서 `build desktopSmoke packageRelease`를 수행하고 테스트·커버리지·실제 창 결과 및 OS별 실행 ZIP을 각각 7일간 보관한다. 실제 Windows 11 설치 확인은 별도다.

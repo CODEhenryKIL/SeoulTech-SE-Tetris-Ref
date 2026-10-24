@@ -1,0 +1,138 @@
+import java.security.MessageDigest
+
+def releaseVersion = '0.1.0'
+def applicationName = 'SeoulTech Tetris'
+def osName = System.getProperty('os.name').toLowerCase(Locale.ROOT)
+def isWindows = osName.contains('win')
+def isMac = osName.contains('mac')
+// macOS requires the first app-version component to be positive. The archive keeps the product version.
+def packageVersion = isMac ? '1.0.0' : releaseVersion
+def platformName = isWindows ? 'windows' : (isMac ? 'macos' : 'unsupported')
+def rawArchitecture = System.getProperty('os.arch').toLowerCase(Locale.ROOT)
+def architectureName = rawArchitecture in ['aarch64', 'arm64'] ? 'aarch64' :
+    (rawArchitecture in ['amd64', 'x86_64'] ? 'x64' : rawArchitecture)
+// jpackage performs an ad-hoc signature on macOS. Building outside synced folders avoids
+// Finder/provenance attributes that codesign rejects before the archive is created.
+def imageDestination = new File(System.getProperty('java.io.tmpdir'),
+    "seoultech-tetris-jpackage-${Math.abs(project.rootDir.absolutePath.hashCode())}")
+def applicationImageName = isMac ? "${applicationName}.app" : applicationName
+def applicationImage = new File(imageDestination, applicationImageName)
+def archiveName = "seoultech-tetris-${releaseVersion}-${platformName}-${architectureName}.zip"
+def archiveFile = layout.buildDirectory.file("distributions/${archiveName}")
+def checksumFile = layout.buildDirectory.file("distributions/${archiveName}.sha256")
+def releaseLauncher = javaToolchains.launcherFor {
+    languageVersion = JavaLanguageVersion.of(21)
+}
+
+tasks.named('jar', Jar) {
+    archiveBaseName = 'seoultech-tetris'
+    manifest {
+        attributes('Main-Class': application.mainClass.get())
+    }
+}
+
+tasks.register('preparePackageInput', Sync) {
+    group = 'distribution'
+    description = 'Stages the application JAR for jpackage.'
+    dependsOn tasks.named('jar')
+    from tasks.named('jar', Jar).flatMap { it.archiveFile }
+    into layout.buildDirectory.dir('jpackage/input')
+}
+
+tasks.register('packageAppImage', Exec) {
+    group = 'distribution'
+    description = 'Creates a host-native app image containing a Java 21 runtime.'
+    dependsOn tasks.named('preparePackageInput')
+    inputs.file(tasks.named('jar', Jar).flatMap { it.archiveFile })
+    inputs.file(file("src/main/resources/icons/tetris.${isWindows ? 'ico' : 'icns'}"))
+    inputs.property('releaseVersion', releaseVersion)
+    inputs.property('packageVersion', packageVersion)
+    inputs.property('mainClass', application.mainClass)
+    inputs.property('packagedDataDirectory', true)
+    inputs.property('toolchainVersion', 21)
+    outputs.dir(applicationImage)
+
+    doFirst {
+        if (!isWindows && !isMac) {
+            throw new GradleException('Release app images are supported on Windows and macOS only.')
+        }
+        delete(imageDestination)
+        imageDestination.mkdirs()
+
+        File javaHome = releaseLauncher.get().metadata.installationPath.asFile
+        File jpackage = new File(javaHome, "bin/${isWindows ? 'jpackage.exe' : 'jpackage'}")
+        File inputDirectory = layout.buildDirectory.dir('jpackage/input').get().asFile
+        File mainJar = tasks.named('jar', Jar).get().archiveFile.get().asFile
+        File icon = file("src/main/resources/icons/tetris.${isWindows ? 'ico' : 'icns'}")
+        List<String> packageArguments = [
+            '--type', 'app-image',
+            '--name', applicationName,
+            '--app-version', packageVersion,
+            '--description', 'SeoulTech Software Engineering Tetris',
+            '--vendor', 'SeoulTech SE Team',
+            '--dest', imageDestination.absolutePath,
+            '--input', inputDirectory.absolutePath,
+            '--main-jar', mainJar.name,
+            '--main-class', application.mainClass.get(),
+            '--icon', icon.absolutePath,
+            '--java-options', '-Dfile.encoding=UTF-8',
+            '--java-options', '-Dtetris.packaged=true'
+        ]
+        if (isMac) {
+            packageArguments.addAll([
+                '--mac-package-identifier', 'kr.ac.seoultech.se.tetris',
+                '--mac-package-name', 'SE Tetris'
+            ])
+        }
+        commandLine([jpackage.absolutePath] + packageArguments)
+    }
+}
+
+tasks.register('packagePortable', Exec) {
+    group = 'distribution'
+    description = 'Archives the host-native app image for distribution.'
+    dependsOn tasks.named('packageAppImage')
+    inputs.dir(applicationImage)
+    outputs.file(archiveFile)
+
+    doFirst {
+        File distributions = layout.buildDirectory.dir('distributions').get().asFile
+        distributions.mkdirs()
+        delete(archiveFile)
+        if (isMac) {
+            commandLine('ditto', '-c', '-k', '--sequesterRsrc', '--keepParent',
+                applicationImage.absolutePath, archiveFile.get().asFile.absolutePath)
+        } else if (isWindows) {
+            String source = applicationImage.absolutePath.replace("'", "''")
+            String destination = archiveFile.get().asFile.absolutePath.replace("'", "''")
+            commandLine('powershell', '-NoProfile', '-NonInteractive', '-Command',
+                "Compress-Archive -Path '${source}' -DestinationPath '${destination}' -Force")
+        }
+    }
+}
+
+tasks.register('packageChecksum') {
+    group = 'distribution'
+    description = 'Writes the SHA-256 checksum for the portable archive.'
+    dependsOn tasks.named('packagePortable')
+    inputs.file(archiveFile)
+    outputs.file(checksumFile)
+
+    doLast {
+        File archive = archiveFile.get().asFile
+        MessageDigest digest = MessageDigest.getInstance('SHA-256')
+        archive.withInputStream { stream ->
+            byte[] buffer = new byte[8192]
+            int count
+            while ((count = stream.read(buffer)) != -1) digest.update(buffer, 0, count)
+        }
+        checksumFile.get().asFile.text =
+            "${digest.digest().encodeHex()}  ${archive.name}${System.lineSeparator()}"
+    }
+}
+
+tasks.register('packageRelease') {
+    group = 'distribution'
+    description = 'Builds a portable app image archive and its SHA-256 checksum.'
+    dependsOn tasks.named('packageChecksum')
+}

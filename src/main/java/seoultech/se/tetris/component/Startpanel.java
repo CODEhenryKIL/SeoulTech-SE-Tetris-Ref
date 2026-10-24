@@ -7,6 +7,7 @@ import static seoultech.se.tetris.component.Maincontainer.changeColor;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import seoultech.se.tetris.Difficulty;
 
 public class Startpanel extends JPanel{
 
@@ -14,11 +15,14 @@ public class Startpanel extends JPanel{
     private Maincontainer maincontainer;
     private int width;
     private int height;
+    private Difficulty difficulty;
+    private JLabel difficultyLabel;
     private final MenuButtons<Button> menu = new MenuButtons<>(new Insets(2, 2, 2, 2));
 
     public Startpanel(Maincontainer maincontainer) {
         width = maincontainer.getConfiguredWidth(); height = maincontainer.getConfiguredHeight();
         this.maincontainer = maincontainer;
+        difficulty = maincontainer.getDifficulty();
         setPreferredSize(new Dimension(width, height));
 		setLayout(new GridBagLayout()); // 컴포넌트 간의 배치를 자유롭게 하기 위해서 GridBagLayout을 사용
 		setBackground(changeColor(Color.LIGHT_GRAY)); // background color로 light gray
@@ -37,6 +41,13 @@ public class Startpanel extends JPanel{
 
         add(titlelabel, gbc);  // 타이틀은 위쪽에
 
+        difficultyLabel = new JLabel(difficultyText(), SwingConstants.CENTER);
+        difficultyLabel.setFont(new Font("Courier", Font.BOLD, 16));
+        difficultyLabel.setForeground(changeColor(Color.BLACK));
+        gbc.gridy = 1;
+        gbc.weighty = 0.1;
+        add(difficultyLabel, gbc);
+
         // Button 컴포넌트 만들기
         JPanel buttonPanel = new JPanel();
         buttonPanel.setLayout(new GridBagLayout()); // 3행 1열, 버튼 사이 간격 15px
@@ -47,6 +58,7 @@ public class Startpanel extends JPanel{
         Button startButton = new Button("START") {
             @Override 
             protected void isPressed() {
+                Startpanel.this.maincontainer.setDifficulty(difficulty);
                 Startpanel.this.maincontainer.exitStartEnterGame();
             }
         };
@@ -74,8 +86,8 @@ public class Startpanel extends JPanel{
         menu.add(buttonPanel, exitButton);
 
         // Button 컴포넌트 위치를 위한 제약사항
-        gbc.gridy = 1; // grid[0][1]에 위치
-        gbc.weighty = 0.7; // 수직 화면의 70% 차지하게 조정
+        gbc.gridy = 2;
+        gbc.weighty = 0.6;
 
         add(buttonPanel, gbc); // 버튼들은 중앙에
 
@@ -98,6 +110,12 @@ public class Startpanel extends JPanel{
 			case KeyEvent.VK_UP:
                 selectUp();
 				break;
+            case KeyEvent.VK_LEFT:
+                selectDifficulty(difficulty.previous());
+                break;
+            case KeyEvent.VK_RIGHT:
+                selectDifficulty(difficulty.next());
+                break;
             case KeyEvent.VK_ENTER:
                 selectEnter();
                 break;
@@ -122,6 +140,18 @@ public class Startpanel extends JPanel{
 
     private void selectEnter() {
         menu.selected().isPressed();
+    }
+
+    private void selectDifficulty(Difficulty selected) {
+        difficulty = selected;
+        maincontainer.setDifficulty(selected);
+        difficultyLabel.setText(difficultyText());
+        revalidate();
+        repaint();
+    }
+
+    private String difficultyText() {
+        return "DIFFICULTY: " + difficulty.displayName();
     }
 
     private class Button extends JPanel {

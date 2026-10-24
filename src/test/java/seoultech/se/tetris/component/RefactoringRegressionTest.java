@@ -96,7 +96,7 @@ public final class RefactoringRegressionTest {
         new Check("collision-rules-direct", "화면·타이머 없는 직접 판정과 좌표 결과의 독립성", RefactoringRegressionTest::collisionRulesDirect),
         new Check("blocked-rotation", "막힌 회전의 좌표·모양 유지", RefactoringRegressionTest::blockedRotation),
         new Check("hard-drop", "하드드롭 위치·점수·다음 블록 승계", RefactoringRegressionTest::hardDrop),
-        new Check("drop-input-score", "자동·수동 낙하와 하드드롭의 기존 점수·이동", RefactoringRegressionTest::dropInputScore),
+        new Check("drop-input-score", "자동·수동 낙하와 하드드롭의 요구 점수·이동", RefactoringRegressionTest::dropInputScore),
         new Check("lock-advance", "다섯 입력 경로의 바닥·고정 블록 위 고정과 미리보기 승계", RefactoringRegressionTest::lockAdvance),
         new Check("lock-line-level", "두 낙하의 실제 고정을 통한 두 줄 삭제·레벨 경계", RefactoringRegressionTest::lockLineLevel),
         new Check("lock-game-over", "고정 후 게임 오버 시 승계·난수 진행 없이 즉시 중단", RefactoringRegressionTest::lockGameOver),
@@ -106,7 +106,7 @@ public final class RefactoringRegressionTest {
         new Check("pause-resume", "일시정지 중 입력 차단·타이머 재개", RefactoringRegressionTest::pauseResume),
         new Check("game-over", "생성 위치가 막히면 타이머 종료·중첩 방지", RefactoringRegressionTest::gameOver),
         new Check("score-save", "점수 저장 후 점수판에서 다시 읽기", RefactoringRegressionTest::scoreSave),
-        new Check("score-append-bytes", "점수 추가 저장의 UTF-8·줄바꿈·기존 무개행 바이트 유지", RefactoringRegressionTest::scoreAppendBytes),
+        new Check("score-append-bytes", "점수 추가 저장의 UTF-8·줄바꿈·무개행 기존 기록 보존", RefactoringRegressionTest::scoreAppendBytes),
         new Check("score-file-boundaries", "누락·빈 파일·공백 기록 조회와 누락 파일 초기화", RefactoringRegressionTest::scoreFileBoundaries),
         new Check("score-parse-boundaries", "기존 점수 파싱·정수 경계·동점 순서·손상 뒤 정상 기록", RefactoringRegressionTest::scoreParseBoundaries),
         new Check("score-refresh", "기존 점수판의 저장·초기화·재저장 후 최신 기록 조회", RefactoringRegressionTest::scoreRefresh),
@@ -165,8 +165,22 @@ public final class RefactoringRegressionTest {
                 Path sandbox = Files.createDirectory(temporary.resolve(check.id()));
                 Files.createFile(sandbox.resolve(MARKER));
                 Path log = sandbox.resolve("result.log");
-                Process child = new ProcessBuilder(java, "-Djava.awt.headless=true", "-cp", classpath,
-                    COMPONENT, "--case", check.id(), sandbox.toString())
+                List<String> command = new ArrayList<>();
+                command.add(java);
+                command.add("-Djava.awt.headless=true");
+                String agent = System.getProperty("tetris.jacoco.agent");
+                String destination = System.getProperty("tetris.jacoco.destination");
+                if (agent != null && !agent.isBlank() && destination != null && !destination.isBlank()) {
+                    command.add("-javaagent:" + agent + "=destfile=" + destination
+                        + ",append=true,includes=seoultech.se.tetris.*");
+                }
+                command.add("-cp");
+                command.add(classpath);
+                command.add(COMPONENT);
+                command.add("--case");
+                command.add(check.id());
+                command.add(sandbox.toString());
+                Process child = new ProcessBuilder(command)
                     .directory(sandbox.toFile()).redirectErrorStream(true).redirectOutput(log.toFile()).start();
                 try {
                     if (!child.waitFor(20, TimeUnit.SECONDS)) {
@@ -884,7 +898,7 @@ public final class RefactoringRegressionTest {
             prepare(board, new OBlock(), 3, 0);
             Block next = board.getNextBlock();
             board.hardDrop();
-            require(board.getScore() == 36, "기존 하드드롭 규칙: 18칸 × 2점 = 36점");
+            require(board.getScore() == 18, "R24 하드드롭 기본 점수: 18칸 × 1점 = 18점");
             for (int y = 18; y < 20; y++) for (int x = 3; x < 5; x++) {
                 require(cells(board)[y][x] == 1, "O블록이 최하단에 고정되어야 합니다.");
             }
@@ -918,8 +932,8 @@ public final class RefactoringRegressionTest {
                 Block next = board.getNextBlock();
                 drop(fixture, input, true);
                 boolean hard = input == DropInput.HARD_DROP || input == DropInput.HARD_DROP_KEY;
-                int expected = hard ? 36 : input == DropInput.DOWN_KEY ? 2 : 1;
-                require(board.getScore() == expected, input + ": 1칸 자동/직접=1점, 수동=2점, 하드드롭=거리×2점을 유지해야 합니다.");
+                int expected = hard ? 18 : 1;
+                require(board.getScore() == expected, input + ": R24에 따라 입력 경로와 무관하게 기본 낙하 1칸당 1점이어야 합니다.");
                 require(((JTextPane) get(fixture.game, "scorepanel")).getText().contains("\n" + expected), "화면 점수도 갱신되어야 합니다.");
                 require(board.x == 3 && board.y == (hard ? 0 : 1), input + ": 이동 후 좌표가 달라지면 안 됩니다.");
                 require(get(board, "curr") == (hard ? next : current), input + ": 하드드롭만 즉시 다음 블록으로 넘어가야 합니다.");
@@ -1381,15 +1395,15 @@ public final class RefactoringRegressionTest {
         try (GameFixture fixture = new GameFixture()) {
             saveViaGame(fixture.game, "한글", Integer.MIN_VALUE);
             saveViaGame(fixture.game, "B", Integer.MAX_VALUE);
-            require(Files.readString(file).equals("한글:-2147483648" + newline + "B:2147483647" + newline),
-                "추가 저장은 기존 UTF-8·이름:점수·플랫폼 줄바꿈을 유지해야 합니다.");
+            require(Files.readString(file).equals("한글:-2147483648:Normal" + newline + "B:2147483647:Normal" + newline),
+                "RANK-05 추가 저장은 UTF-8·이름:점수:난이도·플랫폼 줄바꿈을 유지해야 합니다.");
             Files.writeString(file, "Legacy:1");
             saveViaGame(fixture.game, "Next", 2);
-            require(Files.readString(file).equals("Legacy:1Next:2" + newline),
-                "기존 무개행 파일에도 기존 APPEND처럼 앞 구분자를 추가하지 않아야 합니다.");
+            require(Files.readString(file).equals("Legacy:1" + newline + "Next:2:Normal" + newline),
+                "무개행 기존 기록과 새 기록 사이에 줄바꿈을 보충해 기존 점수를 보존해야 합니다.");
             saveViaGame(fixture.game, "Fresh", 3);
-            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3")),
-                "잘못 이어진 행 뒤의 정상 추가 기록은 읽을 수 있어야 합니다.");
+            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3 [Normal]", "Next: 2 [Normal]", "Legacy: 1")),
+                "기존 무개행 기록과 난이도가 포함된 새 기록을 모두 읽을 수 있어야 합니다.");
         }
     }
 
@@ -1434,13 +1448,13 @@ public final class RefactoringRegressionTest {
             Scoreboardpanel panel = new Scoreboardpanel(fixture.owner);
             saveViaGame(fixture.game, "New", 300);
             panel.drawScore();
-            require(scoreText(panel).equals(rankingRows("New: 300", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
+            require(scoreText(panel).equals(rankingRows("New: 300 [Normal]", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
             resetViaMenu(fixture.owner);
             panel.drawScore();
             require(Files.size(file) == 0 && scoreText(panel).equals(rankingRows()), "초기화 후 이전 목록이 캐시에 남으면 안 됩니다.");
             saveViaGame(fixture.game, "After", 7);
             panel.drawScore();
-            require(scoreText(panel).equals(rankingRows("After: 7")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
+            require(scoreText(panel).equals(rankingRows("After: 7 [Normal]")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
         }
     }
 

@@ -5,7 +5,9 @@ import seoultech.se.tetris.component.Maincontainer;
 public class Tetris {
 
 	public static void main(String[] args) {
-		Maincontainer maincontainer = new Maincontainer();
-		maincontainer.enterStart();
+		javax.swing.SwingUtilities.invokeLater(() -> {
+            Maincontainer maincontainer = new Maincontainer();
+            maincontainer.enterStart();
+        });
 	}
 }

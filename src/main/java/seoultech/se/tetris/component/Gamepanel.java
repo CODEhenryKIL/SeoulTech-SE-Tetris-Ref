@@ -6,6 +6,7 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import javax.swing.BorderFactory;
 import javax.swing.JLabel;
+import javax.swing.JButton;
 import javax.swing.JPanel;
 import javax.swing.JTextPane;
 import javax.swing.SwingConstants;
@@ -13,10 +14,12 @@ import javax.swing.text.SimpleAttributeSet;
 import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import seoultech.se.tetris.blocks.Block;
+import seoultech.se.tetris.Difficulty;
 import seoultech.se.tetris.score.ScoreStore;
 
 public class Gamepanel extends JPanel{
     private Board board;
+    private final Difficulty difficulty;
     private Nextblockpanel nextblockpanel;
     private JTextPane scorepanel;
     private StyledDocument docScore;
@@ -37,6 +40,7 @@ public class Gamepanel extends JPanel{
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
+        this.difficulty = maincontainer.getDifficulty();
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
 
         board = new Board(this);
@@ -67,6 +71,13 @@ public class Gamepanel extends JPanel{
 		StyleConstants.setAlignment(styleSetScore2, StyleConstants.ALIGN_RIGHT);
         docScore.setParagraphAttributes(7, 1, styleSetScore2, false);
         add(scorepanel);
+        JButton menuButton = new JButton("MENU");
+        menuButton.setBounds(WIDTH*330/500+20, HEIGHT*200/600+30, WIDTH*140/500, 35);
+        menuButton.addActionListener(event -> {
+            if (board.timer != null) { board.timer.stop(); board.timer = null; }
+            gameExit();
+        });
+        add(menuButton);
 
         board.boardStart();
 
@@ -77,6 +88,8 @@ public class Gamepanel extends JPanel{
         setFocusTraversalKeysEnabled(false);
     }
     
+    Difficulty getDifficulty() { return difficulty; }
+
     protected void drawNextBoard(Block next) {
 		nextblockpanel.drawNextBoard(next);
 	}
@@ -90,6 +103,12 @@ public class Gamepanel extends JPanel{
     }
 
     protected void gameOver() {
+        var rankings = ScoreStore.readRanked();
+        if (rankings.size() >= 10 && board.getScore() <= rankings.get(9).score()) {
+            board.stopAnimations();
+            maincontainer.exitGameEnterScoreboard(null, board.getScore(), difficulty);
+            return;
+        }
         gameOverPanel = new JPanel() {
 		    @Override 
 		    protected void paintComponent(Graphics g) {
@@ -145,7 +164,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        ScoreStore.append(this.userName, this.score);
+        ScoreStore.append(this.userName, this.score, difficulty);
     }
 
     protected void gamePause() {
@@ -192,6 +211,7 @@ public class Gamepanel extends JPanel{
     }
 
     protected void gameExit() {
+        board.stopAnimations();
         maincontainer.exitGameEnterStart();
     }
 
@@ -221,8 +241,15 @@ public class Gamepanel extends JPanel{
 				} else return;
 			}
 			int i = e.getKeyCode();
+            if (i == KeyEvent.VK_ESCAPE && i != Maincontainer.DOWN && i != Maincontainer.LEFT
+                    && i != Maincontainer.RIGHT && i != Maincontainer.ROTATE
+                    && i != Maincontainer.PAUSE && i != Maincontainer.HARD_DROP) {
+                if (board.timer != null) { board.timer.stop(); board.timer = null; }
+                gameExit();
+                return;
+            }
 			if (i == Maincontainer.DOWN) {
-				if (board.moveDown()) board.addScore(Board.DOWNPOINT);
+				board.moveDown();
 				board.drawBoard();
 				return;
 			} else if (i == Maincontainer.RIGHT) {
@@ -275,7 +302,7 @@ public class Gamepanel extends JPanel{
                 userName = setUserNameText.getText();
                 removeKeyListener(this);
                 saveScore();
-                maincontainer.exitGameEnterStart();
+                maincontainer.exitGameEnterScoreboard(userName, score, difficulty);
             } else e.consume();
         }
 

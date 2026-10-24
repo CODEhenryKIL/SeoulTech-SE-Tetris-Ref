@@ -1,5 +1,6 @@
 plugins {
     id 'application'
+    id 'jacoco'
 }
 
 repositories {
@@ -16,10 +17,19 @@ application {
     mainClass = 'seoultech.se.tetris.main.Tetris'
 }
 
+configurations {
+    jacocoRuntimeAgent
+}
+
+jacoco {
+    toolVersion = '0.8.15'
+}
+
 dependencies {
     testImplementation platform('org.junit:junit-bom:5.14.1')
     testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+    jacocoRuntimeAgent 'org.jacoco:org.jacoco.agent:0.8.15:runtime'
 }
 
 tasks.withType(JavaCompile).configureEach {
@@ -34,8 +44,53 @@ tasks.named('test', Test) {
     systemProperty 'java.awt.headless', 'true'
     // Gradle workers' java.class.path does not contain the full test runtime.
     systemProperty 'tetris.regression.classpath', sourceSets.test.runtimeClasspath.asPath
+    doFirst {
+        systemProperty 'tetris.jacoco.agent', configurations.jacocoRuntimeAgent.singleFile.absolutePath
+        systemProperty 'tetris.jacoco.destination',
+            extensions.getByName('jacoco').destinationFile.absolutePath
+    }
     testLogging {
         events 'passed', 'skipped', 'failed'
         exceptionFormat = 'full'
     }
+}
+
+tasks.named('jacocoTestReport', JacocoReport) {
+    dependsOn tasks.named('test')
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+}
+
+tasks.named('jacocoTestCoverageVerification', JacocoCoverageVerification) {
+    dependsOn tasks.named('test')
+    violationRules {
+        rule {
+            limit {
+                counter = 'LINE'
+                value = 'COVEREDRATIO'
+                minimum = 0.70
+            }
+        }
+    }
+}
+
+tasks.named('check') {
+    dependsOn tasks.named('jacocoTestReport')
+    dependsOn tasks.named('jacocoTestCoverageVerification')
+}
+
+apply from: 'gradle/packaging.gradle'
+
+
+tasks.register('desktopSmoke', JavaExec) {
+    group = 'verification'
+    description = 'Runs a real JFrame lifecycle smoke check with synthetic listener input.'
+    dependsOn tasks.named('testClasses')
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'seoultech.se.tetris.component.DesktopSmoke'
+    javaLauncher = javaToolchains.launcherFor { languageVersion = JavaLanguageVersion.of(21) }
+    systemProperty 'java.awt.headless', 'false'
 }
