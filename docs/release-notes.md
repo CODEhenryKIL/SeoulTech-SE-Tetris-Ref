@@ -29,7 +29,7 @@ Windows PowerShell에서는 다음 명령을 사용한다.
 | 대상 | 산출물 | 상태 |
 |---|---|---|
 | macOS 26 / Apple Silicon | `seoultech-tetris-0.1.0-macos-aarch64.zip` | 로컬 생성·SHA-256·압축 해제·엄격 서명 구조 검사·번들 런처 기동 확인 |
-| Windows Server 2025 / x64 | `seoultech-tetris-0.1.0-windows-x64.zip` | CI 생성·구조 검증 예정; 실제 Windows 11 설치·조작은 RELEASE-04 기록에서 별도 확인 |
+| Windows Server 2025 / x64 | `seoultech-tetris-0.1.0-windows-x64.zip` | CI 생성·SHA-256·런처/JVM/JAR/아이콘 구조 검증 성공; 실제 Windows 11 설치·조작은 RELEASE-04 기록에서 별도 확인 |
 
 ## 무결성과 재현 조건
 
@@ -45,3 +45,5 @@ Windows PowerShell에서는 다음 명령을 사용한다.
 - OS별 패키지는 교차 생성하지 않는다. Windows 패키지는 Windows에서, macOS 패키지는 macOS에서 만든다.
 - headless 자동 테스트는 실제 키 반복 입력, 창 표시, 더블클릭 실행을 대체하지 않는다. 사용자 환경 검증 범위는 릴리스 검증 기록에 따로 남긴다.
 - 이후 게임 규칙·화면·저장 형식이 바뀌면 동일 절차로 패키지를 다시 생성하고 전체 회귀·실행 검증을 반복해야 한다.
+
+소스 `456d876`의 [양 OS CI](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40085571922)와 다운로드·체크섬은 [검증 기록](verification.md#실제-github-ci와-배포-산출물-확인)에 연결했다. 실제 Windows 11/깨끗한 사용자 환경 검증은 별도 조건으로 남긴다.

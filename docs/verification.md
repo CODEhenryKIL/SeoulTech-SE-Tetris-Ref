@@ -41,6 +41,25 @@
 | 환경 | 확인한 내용 | 남은 확인 |
 |---|---|---|
 | macOS 26.6.2 / Apple Silicon / Java 21.0.12.1 | 런타임 포함 ZIP 생성·SHA-256 대조·새 임시 폴더 압축 해제·`codesign --verify --deep --strict` 통과, 포함 JAR/아이콘/런처 설정 확인, 패키지 앱의 실제 시작 화면 표시 | 깨끗한 대상 사용자 환경에서 물리 키 조작·저장·종료·재실행의 전체 절차 |
-| Windows Server 2025 | GitHub CI에서 빌드·회귀·커버리지·실제 JFrame 합성 입력·x64 패키지 생성 결과 확인 대상 | 실제 Windows 11 설치·더블클릭·키 반복·플레이·저장·재실행 |
+| Windows Server 2025 | GitHub CI에서 빌드·회귀·커버리지·실제 JFrame 합성 입력·x64 패키지 생성 성공 확인 | 실제 Windows 11 설치·더블클릭·키 반복·플레이·저장·재실행 |
 
 TEST-06과 RELEASE-04는 합성 입력/패키지 생성만으로 완료 처리하지 않는다. 실제 사용자 환경 검증이 남으면 In Progress에 남기고 나머지 완료 카드만 Review로 이동한다. PM-01·02·05는 이번 작업 범위에서 제외한다.
+
+
+## 실제 GitHub CI와 배포 산출물 확인
+
+소스 commit [`456d876`](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/commit/456d87618b3838690baa45abedf476c2dd284c67)의 [Java CI 40085571922](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40085571922)에서 두 OS job이 모두 success다. 양 OS 보고서 ZIP의 GitHub SHA-256을 대조한 뒤 XML·실제 창 결과를 직접 확인했다.
+
+| CI 환경 | 검사 결과 | 제품 coverage | 실제 창 검사 |
+|---|---|---|---|
+| Windows Server 2025 / amd64 / Java 21.0.12.1 | 독립 55/55 + 추가 JUnit 16개 성공 | 1061/1301 = 81.55% | JFrame 합성 입력 통과 |
+| macOS 26.6.2 / aarch64 / Java 21.0.13 | 독립 55/55 + 추가 JUnit 16개 성공 | 1061/1301 = 81.55% | JFrame 합성 입력 통과 |
+
+배포 아티팩트 바깥 ZIP의 GitHub digest와 안쪽 실행 ZIP의 `.sha256`을 모두 대조했다. 안쪽 JAR·아이콘·패키지 데이터 경로 설정·OS 런처·포함 JVM 라이브러리 존재도 확인했다.
+
+| 패키지 | 실행 ZIP SHA-256 | 다운로드 |
+|---|---|---|
+| Windows x64 | `db21c20e24df7c112600825c00ed797bd9d73430852c9a033db82f3d4998a360` | [Windows package](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40085571922/artifacts/12556459967) |
+| macOS Apple Silicon | `b56948801e977c18c484761a827eb5eb5344afc9235d1032c87882424321e093` | [macOS package](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40085571922/artifacts/12556509597) |
+
+CI 보관 기간은 7일이다. 만료 시 동일 소스에서 개발 안내의 OS별 명령으로 다시 생성·검증한다. CI 성공은 위에서 명시한 실제 Windows 11/사용자 환경 검증의 남은 조건을 해소하지 않는다.
