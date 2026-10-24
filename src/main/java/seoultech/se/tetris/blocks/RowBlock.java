@@ -8,7 +8,10 @@ public class RowBlock extends ItemBlock {
     private int itemY;
     
     public RowBlock() {
-        Random random = new Random();
+        this(new Random());
+    }
+
+    RowBlock(Random random) {
         int block = random.nextInt(7);
         Block newBlock;
         switch (block) {
@@ -23,12 +26,14 @@ public class RowBlock extends ItemBlock {
         };
         int index = random.nextInt(4);
         int cnt = -1;
+        markerSearch:
         for (int i = 0; i < newBlock.height(); i++) {
             for (int j = 0; j < newBlock.width(); j++) {
                 if (newBlock.getShape(j,i) == 1) {cnt++;}
                 if (cnt == index) {
                     newBlock.setText(j, i, "L");
                     itemX = j; itemY = i;
+                    break markerSearch;
                 }
             }
         }
