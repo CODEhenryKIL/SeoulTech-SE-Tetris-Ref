@@ -92,6 +92,40 @@ class DifficultyUiTest {
     }
 
     @Test
+    void runningGamesKeepIndependentDifficultyAndBoardState() throws Exception {
+        System.setProperty("tetris.dataDir", temporary.toString());
+        ExistingFeatureFixture.onEdt(() -> {
+            TestMaincontainer owner = owner();
+            owner.setDifficulty(Difficulty.EASY);
+            Gamepanel easyGame = new Gamepanel(owner);
+            Board easyBoard = ExistingFeatureFixture.get(easyGame, "board", Board.class);
+            easyBoard.timer.stop();
+            owner.setDifficulty(Difficulty.HARD);
+            Gamepanel hardGame = new Gamepanel(owner);
+            Board hardBoard = ExistingFeatureFixture.get(hardGame, "board", Board.class);
+            hardBoard.timer.stop();
+            try {
+                owner.setDifficulty(Difficulty.NORMAL);
+                assertEquals(Difficulty.EASY, easyGame.getDifficulty());
+                assertEquals(Difficulty.HARD, hardGame.getDifficulty());
+                ExistingFeatureFixture.invoke(easyBoard, "levelUp");
+                ExistingFeatureFixture.invoke(hardBoard, "levelUp");
+                assertEquals(827, easyBoard.timer.getDelay());
+                assertEquals(761, hardBoard.timer.getDelay());
+                assertTrue(easyBoard.moveDown());
+                assertEquals(2, easyBoard.getScore());
+                assertEquals(0, hardBoard.getScore());
+            } finally {
+                easyBoard.stopAnimations();
+                hardBoard.stopAnimations();
+                easyBoard.timer.stop();
+                hardBoard.timer.stop();
+            }
+            return null;
+        });
+    }
+
+    @Test
     void scoreboardLabelsOnlyRecordsThatContainDifficultyMetadata() throws Exception {
         System.setProperty("tetris.dataDir", temporary.toString());
         ScoreStore.append("Legacy", 10);

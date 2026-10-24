@@ -59,6 +59,7 @@ jobs:
             build/reports/jacoco/**
             build/reports/performance/**
             build/reports/desktop/**
+            build/reports/req2/**
           if-no-files-found: warn
           retention-days: 7
 
