@@ -1,0 +1,41 @@
+plugins {
+    id 'application'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+application {
+    mainClass = 'seoultech.se.tetris.main.Tetris'
+}
+
+dependencies {
+    testImplementation platform('org.junit:junit-bom:5.14.1')
+    testImplementation 'org.junit.jupiter:junit-jupiter'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 21
+    options.compilerArgs.add('-Xlint:all')
+}
+
+tasks.named('test', Test) {
+    useJUnitPlatform()
+    failOnNoDiscoveredTests = true
+    systemProperty 'java.awt.headless', 'true'
+    // Gradle workers' java.class.path does not contain the full test runtime.
+    systemProperty 'tetris.regression.classpath', sourceSets.test.runtimeClasspath.asPath
+    testLogging {
+        events 'passed', 'skipped', 'failed'
+        exceptionFormat = 'full'
+    }
+}

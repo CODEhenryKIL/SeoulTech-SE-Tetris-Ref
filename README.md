@@ -1,5 +1,30 @@
 # SeoulTech SE Course Team Project - Tetris reference code.
 
+## Build, test and run
+
+Install JDK 21 and set `JAVA_HOME` to its installation directory. Use the
+checked-in Gradle Wrapper; a separate Gradle installation is not required.
+
+```bash
+./gradlew build
+./gradlew test
+./gradlew run
+```
+
+On Windows PowerShell, use `.\gradlew.bat build`, `.\gradlew.bat test`, and
+`.\gradlew.bat run`. The first invocation needs internet access to download
+Gradle and test dependencies.
+
+The project uses Gradle 9.8.2, Java 21, and JUnit 5.14.1. Production sources
+are under `src/main/java`; tests are under `src/test/java`. The `test` task
+also runs the existing 52 standalone regression checks through a JUnit adapter.
+Open `build/reports/tests/test/index.html` for the results.
+
+See [development instructions](docs/development.md) for setup, test scope,
+and troubleshooting.
+
+## Original reference-code notes
+
 This code is a very basic implementation of Tetris game.   
 
 Use it only for reference of how Java Swing and simple game logics work, if you don't know where to start.   

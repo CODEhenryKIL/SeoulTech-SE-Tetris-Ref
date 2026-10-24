@@ -32,7 +32,7 @@ import sun.misc.Unsafe;
  * 리팩토링 전후의 기존 동작을 확인하는 독립 실행 회귀 테스트. JDK 21 이상 필요.
  * 저장소 루트에서 실행(macOS/Linux):
  *
- *   javac --release 21 -d /tmp/tetris-tests $(find src -name '*.java') tests/RefactoringRegressionTest.java
+ *   javac --release 21 -d /tmp/tetris-tests $(find src/main/java -name '*.java') src/test/java/seoultech/se/tetris/component/RefactoringRegressionTest.java
  *   java -cp /tmp/tetris-tests seoultech.se.tetris.component.RefactoringRegressionTest
  *
  * 새 테스트 라이브러리 없이 실행하며, 각 검사는 임시 디렉터리/별도 JVM을 사용한다.
