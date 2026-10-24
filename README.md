@@ -1,5 +1,30 @@
 # SeoulTech SE Course Team Project - Tetris reference code.
 
+## Build, test and run
+
+Install JDK 21 and set `JAVA_HOME` to its installation directory. Use the
+checked-in Gradle Wrapper; a separate Gradle installation is not required.
+
+```bash
+./gradlew build
+./gradlew test
+./gradlew run
+```
+
+On Windows PowerShell, use `.\gradlew.bat build`, `.\gradlew.bat test`, and
+`.\gradlew.bat run`. The first invocation needs internet access to download
+Gradle and test dependencies.
+
+The project uses Gradle 9.8.2, Java 21, and JUnit 5.14.1. Production sources
+are under `src/main/java`; tests are under `src/test/java`. The `test` task
+also runs the 55 standalone regression checks (the original 52 plus 3 boundary checks) through a JUnit adapter.
+Open `build/reports/tests/test/index.html` for the results.
+
+See [development instructions](docs/development.md) for setup, test scope,
+and troubleshooting.
+
+## Original reference-code notes
+
 This code is a very basic implementation of Tetris game.   
 
 Use it only for reference of how Java Swing and simple game logics work, if you don't know where to start.   
@@ -25,3 +50,9 @@ For further funcionality implementations, you need to change the design and impl
 여기 제시된 코드는 Java Swing을 사용하여 어떻게 게임을 구현해야 할지 힌트를 주기 위한 것입니다.  
 현재 디자인 및 구현은 앞으로 게임을 위한 다양한 기능을 구현하기에 적절한 상태가 아니니 단순한 참고용으로 사용하시기 바랍니다.  
 구현 과정에서 원하는 경우 다른 오픈소스 라이브러리 등을 가져와 사용해도 좋습니다.
+
+
+Release candidates include a Java 21 runtime and application icons. Run `./gradlew packageRelease`
+(on Windows, `gradlew.bat packageRelease`) on each target OS. See [the user guide](docs/user-guide.md)
+and [verification scope and results](docs/verification.md). `build` also enforces 70% line coverage;
+`desktopSmoke` checks a real JFrame using synthetic input in a graphical session.
