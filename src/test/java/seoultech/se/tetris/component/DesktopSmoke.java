@@ -13,6 +13,8 @@ import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import seoultech.se.tetris.score.ScoreStore;
+import seoultech.se.tetris.Difficulty;
+import seoultech.se.tetris.GameMode;
 
 /** Real JFrame lifecycle with synthetic listener input; no OS installation/physical-key claim. */
 public final class DesktopSmoke {
@@ -30,6 +32,15 @@ public final class DesktopSmoke {
 
     private static void check(boolean condition, String message) {
         if (!condition) throw new AssertionError(message);
+    }
+
+    private static void capture(JFrame frame, Path path) throws Exception {
+        frame.validate();
+        BufferedImage image = new BufferedImage(frame.getWidth(), frame.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        Graphics2D graphics = image.createGraphics();
+        try { frame.paint(graphics); }
+        finally { graphics.dispose(); }
+        ImageIO.write(image, "png", path.toFile());
     }
 
     public static void main(String[] args) throws Exception {
@@ -101,7 +112,9 @@ public final class DesktopSmoke {
                     "new score must include its difficulty");
                 key(scoreboard, KeyEvent.VK_ENTER);
                 ScoreStore.clear();
-                for (int rank = 1; rank <= 12; rank++) ScoreStore.append("RANK" + rank, rank * 1000);
+                for (int rank = 1; rank <= 12; rank++) {
+                    ScoreStore.append("RANK" + rank, rank * 1000, Difficulty.EASY, GameMode.CLASSIC);
+                }
                 frame.exitStartEnterGame();
                 game = (Gamepanel) field(frame, "gamePanel");
                 board = (Board) field(game, "board");
@@ -112,13 +125,48 @@ public final class DesktopSmoke {
                 check(scoreboard.isShowing() && game.getParent() == null,
                     "nonqualifying score must open rankings without name entry");
                 check(ScoreStore.readRanked().size() == 12, "nonqualifying score must not append a record");
+                capture(frame, evidence.resolve("classic-scores.png"));
+                key(scoreboard, KeyEvent.VK_ENTER);
+                frame.exitStartEnterGame("Item");
+                game = (Gamepanel) field(frame, "gamePanel");
+                board = (Board) field(game, "board");
+                board.timer.stop();
+                board.timer = null;
+                board.addScore(111);
+                game.gameOver();
+                key(game, KeyEvent.VK_ENTER);
+                scoreboard = (Scoreboardpanel) field(frame, "scoreboardPanel");
+                check(ScoreStore.readRanked(GameMode.ITEM).size() == 1,
+                    "full Classic rankings must not block the first Item record");
+                check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText()
+                    .contains("PLAYER: 111 [Easy] [Item]"), "result screen must select the played mode");
+                ScoreStore.append("LONGNAME99", Integer.MAX_VALUE, Difficulty.NORMAL, GameMode.ITEM);
+                scoreboard.drawScore();
+                capture(frame, evidence.resolve("item-scores.png"));
+                key(scoreboard, KeyEvent.VK_LEFT);
+                check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText().contains("RANK12"),
+                    "left key must switch Item rankings to Classic");
+                check(!((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText().contains("PLAYER: 111"),
+                    "Classic filter must omit Item records");
+                key(scoreboard, KeyEvent.VK_ENTER);
+                frame.exitStartEnterSetting();
+                frame.setting.clearSetting();
+                frame.exitSettingEnterStart();
+                check(frame.getConfiguredWidth() == 500 && frame.getConfiguredHeight() == 600,
+                    "minimum window size must be restored for long ranking labels");
+                frame.exitStartEnterScoreboard();
+                scoreboard = (Scoreboardpanel) field(frame, "scoreboardPanel");
+                check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText()
+                    .contains("LONGNAME99: 2147483647 [Normal] [Item]"),
+                    "reopening the scoreboard must reload mode and difficulty from disk");
+                capture(frame, evidence.resolve("all-scores.png"));
                 key(scoreboard, KeyEvent.VK_ENTER);
                 frame.setting.clearSetting();
                 frame.setting.exportSetting();
                 ScoreStore.clear();
                 check(ScoreStore.readRanked().isEmpty(), "reset must remove saved scores");
                 Files.writeString(evidence.resolve("result.txt"),
-                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, settings save/reload, ranking/reset, game-over to scoreboard\n"
+                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\n"
                     + "OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version")
                     + " arch=" + System.getProperty("os.arch") + " Java=" + System.getProperty("java.version") + "\n"
                     + "Input=synthetic KeyListener events; physical keyboard and clean target installation remain separate\n");

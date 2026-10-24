@@ -32,6 +32,7 @@ import seoultech.se.tetris.blocks.ItemBlock;
 import seoultech.se.tetris.blocks.RowBlock;
 import seoultech.se.tetris.blocks.BlockGenerator;
 import seoultech.se.tetris.Difficulty;
+import seoultech.se.tetris.GameMode;
 import seoultech.se.tetris.rules.CollisionRules;
 
 public class Board extends JComponent {
@@ -231,7 +232,7 @@ public class Board extends JComponent {
 		if (isgameover()) return false;
 		curr = next;
         anchorTouched = false;
-        next = gamepanel.gameMode.equals("Item") && erasedLineNum / 10 > clearedBefore / 10
+        next = gamepanel.getGameMode() == GameMode.ITEM && erasedLineNum / 10 > clearedBefore / 10
             ? blockGenerator.nextItemBlock() : blockGenerator.nextBlock(gamepanel.getDifficulty());
 		this.gamepanel.drawNextBoard(next);
 

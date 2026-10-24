@@ -14,6 +14,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.List;
 import seoultech.se.tetris.Difficulty;
+import seoultech.se.tetris.GameMode;
 
 // 창을 구성하는 클래스입니다.
 public class Maincontainer extends JFrame{
@@ -75,9 +76,13 @@ public class Maincontainer extends JFrame{
         enterStart();
     }
     protected void exitGameEnterScoreboard(String name, int score, seoultech.se.tetris.Difficulty difficulty) {
+        exitGameEnterScoreboard(name, score, difficulty, null);
+    }
+
+    protected void exitGameEnterScoreboard(String name, int score, Difficulty difficulty, GameMode mode) {
         if (gamePanel != null) mainPanel.remove(gamePanel);
-        scoreboardPanel = new Scoreboardpanel(this);
-        if (name != null) scoreboardPanel.highlightScore(name, score, difficulty);
+        scoreboardPanel = new Scoreboardpanel(this, mode);
+        if (name != null) scoreboardPanel.highlightScore(name, score, difficulty, mode);
         mainPanel.add(scoreboardPanel, "ScoreboardScreen");
         cardLayout.show(mainPanel, "ScoreboardScreen");
         mainPanel.revalidate();

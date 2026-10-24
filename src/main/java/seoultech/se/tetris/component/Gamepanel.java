@@ -15,12 +15,13 @@ import javax.swing.text.StyleConstants;
 import javax.swing.text.StyledDocument;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.Difficulty;
+import seoultech.se.tetris.GameMode;
 import seoultech.se.tetris.score.ScoreStore;
 
 public class Gamepanel extends JPanel{
     private Board board;
     private final Difficulty difficulty;
-    protected String gameMode;
+    private final GameMode gameMode;
     private Nextblockpanel nextblockpanel;
     private JTextPane scorepanel;
     private StyledDocument docScore;
@@ -42,10 +43,15 @@ public class Gamepanel extends JPanel{
     }
 
     public Gamepanel(Maincontainer maincontainer, String gameMode) {
+        this(maincontainer, GameMode.parse(gameMode)
+            .orElseThrow(() -> new IllegalArgumentException("Unknown game mode: " + gameMode)));
+    }
+
+    public Gamepanel(Maincontainer maincontainer, GameMode gameMode) {
         setLayout(null);
         setBackground(changeColor(Color.LIGHT_GRAY));
         this.maincontainer = maincontainer;
-        this.gameMode = gameMode;
+        this.gameMode = java.util.Objects.requireNonNull(gameMode, "gameMode");
         this.difficulty = maincontainer.getDifficulty();
         HEIGHT = maincontainer.getConfiguredHeight(); WIDTH = maincontainer.getConfiguredWidth();
 
@@ -95,6 +101,7 @@ public class Gamepanel extends JPanel{
     }
     
     Difficulty getDifficulty() { return difficulty; }
+    GameMode getGameMode() { return gameMode; }
 
     protected void drawNextBoard(Block next) {
 		nextblockpanel.drawNextBoard(next);
@@ -109,10 +116,10 @@ public class Gamepanel extends JPanel{
     }
 
     protected void gameOver() {
-        var rankings = ScoreStore.readRanked();
+        var rankings = ScoreStore.readRanked(gameMode);
         if (rankings.size() >= 10 && board.getScore() <= rankings.get(9).score()) {
             board.stopAnimations();
-            maincontainer.exitGameEnterScoreboard(null, board.getScore(), difficulty);
+            maincontainer.exitGameEnterScoreboard(null, board.getScore(), difficulty, gameMode);
             return;
         }
         gameOverPanel = new JPanel() {
@@ -170,7 +177,7 @@ public class Gamepanel extends JPanel{
     }
 
     private void saveScore() {
-        ScoreStore.append(this.userName, this.score, difficulty);
+        ScoreStore.append(this.userName, this.score, difficulty, gameMode);
     }
 
     protected void gamePause() {
@@ -308,7 +315,7 @@ public class Gamepanel extends JPanel{
                 userName = setUserNameText.getText();
                 removeKeyListener(this);
                 saveScore();
-                maincontainer.exitGameEnterScoreboard(userName, score, difficulty);
+                maincontainer.exitGameEnterScoreboard(userName, score, difficulty, gameMode);
             } else e.consume();
         }
 

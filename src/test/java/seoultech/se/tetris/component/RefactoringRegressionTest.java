@@ -1400,14 +1400,14 @@ public final class RefactoringRegressionTest {
         try (GameFixture fixture = new GameFixture()) {
             saveViaGame(fixture.game, "한글", Integer.MIN_VALUE);
             saveViaGame(fixture.game, "B", Integer.MAX_VALUE);
-            require(Files.readString(file).equals("한글:-2147483648:Normal" + newline + "B:2147483647:Normal" + newline),
-                "RANK-05 추가 저장은 UTF-8·이름:점수:난이도·플랫폼 줄바꿈을 유지해야 합니다.");
+            require(Files.readString(file).equals("한글:-2147483648:Normal:Classic" + newline + "B:2147483647:Normal:Classic" + newline),
+                "R2-14 새 게임 저장은 UTF-8·이름:점수:난이도:모드·플랫폼 줄바꿈을 유지해야 합니다.");
             Files.writeString(file, "Legacy:1");
             saveViaGame(fixture.game, "Next", 2);
-            require(Files.readString(file).equals("Legacy:1" + newline + "Next:2:Normal" + newline),
+            require(Files.readString(file).equals("Legacy:1" + newline + "Next:2:Normal:Classic" + newline),
                 "무개행 기존 기록과 새 기록 사이에 줄바꿈을 보충해 기존 점수를 보존해야 합니다.");
             saveViaGame(fixture.game, "Fresh", 3);
-            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3 [Normal]", "Next: 2 [Normal]", "Legacy: 1")),
+            require(scoreText(new Scoreboardpanel(fixture.owner)).equals(rankingRows("Fresh: 3 [Normal] [Classic]", "Next: 2 [Normal] [Classic]", "Legacy: 1")),
                 "기존 무개행 기록과 난이도가 포함된 새 기록을 모두 읽을 수 있어야 합니다.");
         }
     }
@@ -1453,13 +1453,13 @@ public final class RefactoringRegressionTest {
             Scoreboardpanel panel = new Scoreboardpanel(fixture.owner);
             saveViaGame(fixture.game, "New", 300);
             panel.drawScore();
-            require(scoreText(panel).equals(rankingRows("New: 300 [Normal]", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
+            require(scoreText(panel).equals(rankingRows("New: 300 [Normal] [Classic]", "Alice: 200", "Bob: 100")), "기존 점수판도 새 저장 기록을 다시 읽어야 합니다.");
             resetViaMenu(fixture.owner);
             panel.drawScore();
             require(Files.size(file) == 0 && scoreText(panel).equals(rankingRows()), "초기화 후 이전 목록이 캐시에 남으면 안 됩니다.");
             saveViaGame(fixture.game, "After", 7);
             panel.drawScore();
-            require(scoreText(panel).equals(rankingRows("After: 7 [Normal]")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
+            require(scoreText(panel).equals(rankingRows("After: 7 [Normal] [Classic]")), "초기화 후 새 기록만 다시 저장·조회할 수 있어야 합니다.");
         }
     }
 
