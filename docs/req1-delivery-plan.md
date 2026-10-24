@@ -175,3 +175,29 @@ Todo 24개를 각각 열어 제목·본문·Status·Assignees·사용자 정의 
 Windows 실제 실행·두 OS 배포·요구사항별 신규 검사·성능·JaCoCo·GitHub CI는 이번 검증에 포함하지 않았다.
 두 카드는 구현·로컬 검증을 마쳤지만 사용자 요청대로 In Progress를 유지한다. 종료 지점은
 `fork/docs/req1-nondev-tasks` 푸시까지이며, PR/팀 검토·main 병합·Done 전환은 후속 작업이다.
+
+
+## 9. SETUP-08 CI 실행·검증 기록 (2026-10-24)
+
+- 구현: `1005babe0f07331af9f93b3879cf732087a90b89` — Windows/macOS Java 21 빌드·테스트 자동화.
+- 로그 처리 보완: `bc79a607255c170aea555893a6b61327142b31f5` — Windows에서 발견한 한글 표준 출력 인코딩 차이를 회귀 실행기 진입점의 UTF-8 PrintStream 설정으로 해결. 부모/내부 검사 JVM 모두 적용하며 제품 코드·검사 기대값은 변경하지 않음.
+- 대상: `windows-2025`(Windows Server 2025/PowerShell)·`macos-26`(macOS 26/Bash), Temurin Java 21, 저장소의 Gradle Wrapper 9.8.2.
+- 동작: 모든 브랜치 push와 PR 생성/갱신 → Wrapper 검증 → OS별 `build` → 성공/실패 모두 테스트 XML·HTML 및 생성된 Gradle 문제 보고서를 OS별 아티팩트로 7일 보관.
+- 외부 Actions: checkout v7.0.1, setup-java v6.1.0, setup-gradle v6.4.0, upload-artifact v7.0.2의 공식 릴리스 full commit SHA 고정. `contents: read`, checkout credential 비보존.
+
+| 검증 | 결과·근거 |
+|---|---|
+| 설정 정적 검사 | 공식 actionlint 1.7.12 바이너리의 배포 SHA-256 확인 후 문법·식·실행 환경·Action 검사 통과. `git diff --check` 통과 |
+| 정상 push 실행 | [Java CI 40081502628](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081502628), 기준 commit `bc79a60`: Windows·macOS 두 job 모두 success |
+| 실제 검사 수 | 양 OS의 보관 ZIP을 내려받아 각 SHA-256 대조 후 JUnit XML 확인. 각 JUnit 어댑터 1개 성공, 내부 PASS 52행과 `RESULT 52/52 passed` 확인 |
+| 정상 보고서 | [Windows 보고서](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081502628/artifacts/12555501826), [macOS 보고서](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081502628/artifacts/12555516770) 업로드 성공 |
+| 의도적 실패 실행 | [Java CI 40081524304](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081524304), 임시 commit `1e7d2e55c41be09140045c028ee748ee15ed1ae0`: 첫 검사에만 AssertionError 주입 → Windows·macOS 두 job 모두 failure |
+| 실패 원인·보고서 | [Windows 실패 보고서](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081524304/artifacts/12555187934), [macOS 실패 보고서](https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40081524304/artifacts/12555412106) 각각 무결성 대조·XML 확인. 주입한 메시지와 `RESULT 51/52 passed` 확인, 인코딩 예외 없음. `always()` 보고서 업로드 success |
+| 임시 변경 정리 | 원본 작업 브랜치/작업 폴더에는 실패 주입 없음. 검증용 원격 브랜치 `ci/setup-08-failure-check-f8700b`는 검증 후 예상 commit을 조건으로 삭제. 실행 기록·보고서는 보관 기간 동안 위 링크에서 확인 가능 |
+| 독립 검토 | CI 설정 및 UTF-8 수정 각각 별도 읽기 전용 검토에서 차단 문제·잔여 이슈 0건 |
+
+이 검증은 fork의 실제 **push 이벤트**로 수행했다. PR 이벤트는 같은 job 구성과 정적 검사를 확인했으며,
+사용자가 요청한 푸시 범위에 맞춰 PR을 새로 생성하지 않았다. `SETUP-04`와 `TEST-01`은 이전 사용자 요청으로
+Review로 이동했고, `SETUP-08`은 착수 시 In Progress로 이동했다. main 병합·Done 전환은 하지 않는다.
+Windows Server의 headless 회귀 통과는 Windows 11의 실제 게임 창·키 입력·설치 검증을 대체하지 않는다.
+성능·JaCoCo·최종 배포는 후속 카드의 범위다. 아티팩트가 만료돼도 버전·실행 명령과 실행 기록으로 재검증할 수 있다.
