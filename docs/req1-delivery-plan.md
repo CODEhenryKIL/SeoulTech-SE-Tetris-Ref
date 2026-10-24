@@ -251,3 +251,23 @@ Windows Server의 headless 회귀 통과는 Windows 11의 실제 게임 창·키
 - 테스트는 기존 52개를 버리거나 이름만 바꾸지 않는다. 요구사항 매핑 후 공백을 보강하고, 결함은 기대값을 임의 수정해 숨기지 않는다.
 - 자동화는 재현 가능한 빌드·테스트·coverage·패키징에 집중한다. UI 자동화 도구 도입 자체를 목표로 만들지 않으며 실제 OS 수동 검증 증거를 남긴다.
 - PM-05를 단일 진행·제출 원장으로 사용하되, 코드·테스트·배포물의 기준 commit과 링크가 서로 다른 경우 완료로 판정하지 않는다.
+
+
+## 11. TEST-02·03 요구별 검사 보강 (2026-10-24)
+
+기존 52개 검사의 이름·기대값을 보존하고 TEST-03의 경계 검사 3개만 추가했다. 제품 코드와 저장 데이터는 변경하지 않았다. 아래 매핑은 headless 게임 규칙 검사이며 실제 창·키 입력·배포 검증은 TEST-06·RELEASE-04에서 수행한다.
+
+| 카드·요구 | 재사용하는 기존 검사 | 보강·판정 |
+|---|---|---|
+| TEST-02 / R15·R16·R21·R46 | `block-initialization`, `block-rotation`, `block-generation`, `collision`, `collision-boundaries`, `rotation-boundaries`, `collision-query-purity`, `collision-rules-direct`, `blocked-rotation` | 7종·4회전, 좌우·아래 이동, 벽·바닥·고정 블록·모양 내부 빈칸, 막힌 회전의 좌표·모양 불변을 이미 검증. 중복 검사 추가 없음 |
+| TEST-03 / R09·R21·R46 | `lock-advance`, `lock-line-level`, `lock-clear-before-game-over`, `line-clear` | `lock-shapes`: 7종·4회전의 바닥 고정 후 전체 격자·빈칸 보존 및 다음 블록 승계. `line-clear-boundaries`: 미완성·최상단·비인접·3줄·4줄의 삭제 누계와 전체 격자·상단 빈 행 보충 |
+| TEST-03 / R32·R46 | `lock-game-over`, `game-over` | `game-over-spawn-cells`: 7종·4회전 생성 영역의 실칸/빈칸 구별, 종료 반환값·타이머·게임오버 표시·격자/next 불변 |
+
+- 보강 전 기준 commit `0f963ac`: 별도 archive에서 Java 21 Gradle clean test, 기존 52/52 통과.
+- 신규 검사 3개를 각각 독립 JVM/임시 폴더에서 실행해 모두 20초 제한 안에 통과.
+- 임시 복사본에서 고정 누락, 최상단 행 삭제 누락, 생성 모양의 빈칸까지 충돌로 취급하는 결함을 각각 주입했다. 대응 검사 3개가 각각 AssertionError로 실패해 탐지력을 확인했으며 작업 브랜치에는 실패 주입을 남기지 않았다.
+- 읽기 전용 독립 검토: 기대값 모델·중복 범위·Timer 정리·Windows headless 경로에 차단 문제 없음. 행렬형 실패 메시지에 블록 종류·회전·probe 좌표를 보강했다.
+- Java 21 `./gradlew --offline --no-daemon --console=plain clean build` 성공(43초). JUnit XML의 내부 PASS 55행과 `RESULT 55/55 passed`, 실패/오류 0 및 setting.txt/tetris_score.txt 해시 보존 확인. 기존 Unsafe 경고 2개 유지, `git diff --check` 통과.
+- 현재 검사 수는 기존 52+신규 3=55이며 JUnit 보고서에서는 어댑터 1개로 표시된다. 재실행 명령·XML 내부 로그 위치는 [개발 안내](development.md)에 유지한다.
+
+다음 묶음은 TEST-04다. R13·R14의 초기 낙하 간격·속도 증가 경계와 R24~26의 자동/수동/하드드롭 거리별 점수·속도 가산·팀 추가 규칙을 요구사항과 대조한다. 기존 동작 보존 검사의 기대값을 바꿔 요구 불일치를 숨기지 않는다.

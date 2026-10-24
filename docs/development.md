@@ -67,10 +67,10 @@ build/                            생성된 클래스·보고서·개발용 아�
 기존 문서의 옛 경로는 당시 commit 기준이다. IDE에서는 Gradle 프로젝트로 다시 가져오고,
 진행 중인 다른 브랜치를 합칠 때에는 변경된 경로에서 양쪽 기능을 확인한다.
 
-## 기존 52개 회귀 검사와 JUnit
+## 55개 회귀 검사와 JUnit
 
 `LegacyRegressionTest`는 JUnit 검사 1개로 기존 독립 실행 검사 전체를 실행하는 어댑터다.
-보고서의 JUnit 검사 수 1은 내부 회귀 검사가 1개라는 뜻이 아니다. 현재 내부 검사 수는 52개이며,
+보고서의 JUnit 검사 수 1은 내부 회귀 검사가 1개라는 뜻이 아니다. 현재 내부 검사 수는 기존 52개와 경계 검사 3개를 합한 55개이며,
 기존 실행기가 각 검사를 별도 JVM/임시 폴더에서 수행한다. 기존 검사의 기대값은 바꾸지 않았다.
 
 어댑터는 Gradle이 전달한 전체 test runtime classpath와 Java 21로 별도 JVM을 시작한다.
@@ -81,7 +81,7 @@ JUnit 검사가 발견되지 않는 경우에도 빌드를 실패시킨다.
 같은 인코딩으로 읽는다. Windows 기본 콘솔 인코딩이 달라도 한글 결과와 실패 원인을 보존한다.
 
 - HTML 보고서: `build/reports/tests/test/index.html`
-- XML 결과와 내부 52개 실행 로그: `build/test-results/test/TEST-seoultech.se.tetris.component.LegacyRegressionTest.xml`의 `system-out`
+- XML 결과와 내부 55개 실행 로그: `build/test-results/test/TEST-seoultech.se.tetris.component.LegacyRegressionTest.xml`의 `system-out`
 - 새 JUnit 검사는 `src/test/java` 아래의 적절한 패키지에 추가
 
 기존 실행기를 JUnit 없이 직접 실행하는 방법(macOS/Linux, JDK 21):
@@ -120,7 +120,7 @@ fork에서 처음 사용하는 경우 해당 저장소의 Actions 활성화가 �
 
 두 작업은 독립 실행된다. 한 OS에서 실패해도 다른 OS의 검사는 계속 진행한다.
 같은 브랜치/PR에 새 변경이 올라오면 이전 실행을 취소하고 최신 변경을 검사한다.
-Gradle Wrapper의 공식 JAR 검증 후 빌드하며, 기존 JUnit 어댑터를 통해 52개 회귀 검사도 실행한다.
+Gradle Wrapper의 공식 JAR 검증 후 빌드하며, 기존 JUnit 어댑터를 통해 55개 회귀 검사도 실행한다.
 검사가 실패하면 해당 작업이 실패로 표시된다. 외부 Action은 확인한 릴리스의 전체 commit SHA로 고정한다.
 
 성공·실패 모두 `test-reports-windows-2025`, `test-reports-macos-26` 아티팩트를 7일간 보관한다.

@@ -17,7 +17,7 @@ Gradle and test dependencies.
 
 The project uses Gradle 9.8.2, Java 21, and JUnit 5.14.1. Production sources
 are under `src/main/java`; tests are under `src/test/java`. The `test` task
-also runs the existing 52 standalone regression checks through a JUnit adapter.
+also runs the 55 standalone regression checks (the original 52 plus 3 boundary checks) through a JUnit adapter.
 Open `build/reports/tests/test/index.html` for the results.
 
 See [development instructions](docs/development.md) for setup, test scope,

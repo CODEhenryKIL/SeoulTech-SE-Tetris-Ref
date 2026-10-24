@@ -113,7 +113,10 @@ public final class RefactoringRegressionTest {
         new Check("score-io-diagnostics", "읽기·저장·초기화 실패의 진단과 원본 보존", RefactoringRegressionTest::scoreIoDiagnostics),
         new Check("score-store-direct", "화면 없는 점수 저장·전체 정렬·목록 독립성과 초기화", RefactoringRegressionTest::scoreStoreDirect),
         new Check("score-ranking", "손상된 기록 무시·내림차순·상위 10개", RefactoringRegressionTest::scoreRanking),
-        new Check("score-reset", "설정 메뉴의 기록 초기화·다시 읽기", RefactoringRegressionTest::scoreReset)
+        new Check("score-reset", "설정 메뉴의 기록 초기화·다시 읽기", RefactoringRegressionTest::scoreReset),
+        new Check("lock-shapes", "7종·4회전 블록의 바닥 고정·빈 칸 보존·다음 블록 배치", RefactoringRegressionTest::lockShapes),
+        new Check("line-clear-boundaries", "미완성·최상단·떨어진 행·3줄·4줄 삭제 후 전체 격자", RefactoringRegressionTest::lineClearBoundaries),
+        new Check("game-over-spawn-cells", "7종·4회전 생성 영역의 실제 칸·빈 칸과 종료 판정", RefactoringRegressionTest::gameOverSpawnCells)
     );
 
     public static void main(String[] args) throws Exception {
@@ -986,6 +989,31 @@ public final class RefactoringRegressionTest {
         }
     }
 
+    private static void lockShapes() throws Exception {
+        for (Block current : blocks()) {
+            for (int rotation = 0; rotation < 4; rotation++) {
+                String context = current.getClass().getSimpleName() + "/" + rotation + ": ";
+                try (GameFixture fixture = new GameFixture()) {
+                    Board board = fixture.board;
+                    prepare(board, current, 0, 20 - current.height());
+                    Block next = board.getNextBlock();
+                    int[][] expected = Arrays.stream(cells(board)).map(row -> row.clone()).toArray(int[][]::new);
+                    for (int row = 0; row < next.height(); row++) {
+                        for (int col = 0; col < next.width(); col++) expected[row][3 + col] = next.getShape(col, row);
+                    }
+                    require(!board.moveDown(), context + "바닥에 닿은 블록은 더 내려가지 않고 고정되어야 합니다.");
+                    require(Arrays.deepEquals(cells(board), expected),
+                        context + "고정 모양의 빈 칸을 채우거나 기존 칸을 잃으면 안 됩니다.");
+                    require(get(board, "curr") == next && board.x == 3 && board.y == 0,
+                        context + "고정 후 표시된 다음 블록을 시작 좌표로 승계해야 합니다.");
+                    require(board.timer != null && get(fixture.game, "gameOverPanel") == null,
+                        context + "바닥 고정만으로 정상 게임이 종료되면 안 됩니다.");
+                }
+                current.rotate();
+            }
+        }
+    }
+
     private static void lockGameOver() throws Exception {
         for (DropInput input : DropInput.values()) {
             try (GameFixture fixture = new GameFixture()) {
@@ -1184,6 +1212,35 @@ public final class RefactoringRegressionTest {
         }
     }
 
+    private static void lineClearBoundaries() throws Exception {
+        for (int[] fullRows : new int[][] {{}, {0}, {17, 19}, {17, 18, 19}, {16, 17, 18, 19}}) {
+            try (GameFixture fixture = new GameFixture()) {
+                Board board = fixture.board;
+                prepare(board, new OBlock(), 3, 0);
+                call(board, "eraseCurr");
+                Set<Integer> removed = new HashSet<>();
+                for (int row : fullRows) removed.add(row);
+                int[][] expected = new int[20][10];
+                int destination = fullRows.length;
+                for (int row = 0; row < 20; row++) {
+                    if (removed.contains(row)) {
+                        for (int col = 0; col < 10; col++) fixedCell(board, col, row);
+                    } else {
+                        int marker = (row * 3 + 1) % 10;
+                        fixedCell(board, marker, row);
+                        // Surviving rows retain their order below the new empty rows.
+                        expected[destination++][marker] = 1;
+                    }
+                }
+                board.eraseLine();
+                require(Arrays.deepEquals(cells(board), expected),
+                    "삭제 행 " + Arrays.toString(fullRows) + ": 남은 행의 순서·하강과 상단 빈 행 보충이 정확해야 합니다.");
+                require((int) get(board, "erasedLineNum") == fullRows.length,
+                    "미완성 행은 남기고 실제 완성된 행만 누계에 반영해야 합니다.");
+            }
+        }
+    }
+
     private static void pauseResume() throws Exception {
         try (GameFixture fixture = new GameFixture()) {
             Board board = fixture.board;
@@ -1224,6 +1281,50 @@ public final class RefactoringRegressionTest {
             require(Files.readString(Path.of("tetris_score.txt")).contains("TESTPLAYER:321"), "게임에서 점수를 저장해야 합니다.");
             String ranking = scoreText(new Scoreboardpanel(fixture.owner));
             require(ranking.contains("TESTPLAYER: 321"), "저장한 점수를 점수판에서 다시 읽어야 합니다.");
+        }
+    }
+
+    private static void gameOverSpawnCells() throws Exception {
+        for (Block next : blocks()) {
+            for (int rotation = 0; rotation < 4; rotation++) {
+                int[] lastFilled = null, firstEmpty = null;
+                for (int row = 0; row < next.height(); row++) {
+                    for (int col = 0; col < next.width(); col++) {
+                        if (next.getShape(col, row) != 0) lastFilled = new int[] {col, row};
+                        else if (firstEmpty == null) firstEmpty = new int[] {col, row};
+                    }
+                }
+                List<int[]> probes = new ArrayList<>();
+                probes.add(lastFilled);
+                if (firstEmpty != null) probes.add(firstEmpty);
+                for (int[] probe : probes) {
+                    String context = next.getClass().getSimpleName() + "/" + rotation
+                        + " probe=" + Arrays.toString(probe) + ": ";
+                    try (GameFixture fixture = new GameFixture()) {
+                        Board board = fixture.board;
+                        prepare(board, new OBlock(), 0, 18);
+                        set(board, "next", next);
+                        fixedCell(board, 3 + probe[0], probe[1]);
+                        String before = Arrays.deepToString(cells(board));
+                        boolean blocked = next.getShape(probe[0], probe[1]) != 0;
+                        fixture.initialTimer.start();
+                        require(board.isgameover() == blocked,
+                            context + "생성 블록의 실제 칸과 충돌할 때만 종료해야 합니다.");
+                        require(before.equals(Arrays.deepToString(cells(board))) && board.getNextBlock() == next,
+                            context + "종료 판정 중 격자를 바꾸거나 다음 블록을 겹쳐 배치하면 안 됩니다.");
+                        if (blocked) {
+                            require(board.timer == null && !fixture.initialTimer.isRunning()
+                                    && get(fixture.game, "gameOverPanel") != null,
+                                context + "생성 불가 시 타이머를 멈추고 게임 종료를 표시해야 합니다.");
+                        } else {
+                            require(board.timer == fixture.initialTimer && fixture.initialTimer.isRunning()
+                                    && get(fixture.game, "gameOverPanel") == null,
+                                context + "생성 모양의 빈 칸에만 고정 블록이 있으면 게임을 계속해야 합니다.");
+                        }
+                    }
+                }
+                next.rotate();
+            }
         }
     }
 
