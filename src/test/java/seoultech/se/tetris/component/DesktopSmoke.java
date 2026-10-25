@@ -72,6 +72,89 @@ public final class DesktopSmoke {
         check(game.getParent() == null && board.timer == null, "P game must cleanly return to the menu");
     }
 
+    private static void savedHardDropItemFlow(Maincontainer frame, Path evidence) throws Exception {
+        check(Maincontainer.HARD_DROP == KeyEvent.VK_B,
+            "recreated frame must apply the saved hard-drop key");
+        check(frame.getDifficulty() == Difficulty.HARD,
+            "recreated frame must apply the saved Hard difficulty");
+
+        frame.exitStartEnterGame("Item");
+        Gamepanel game = (Gamepanel) field(frame, "gamePanel");
+        Board board = (Board) field(game, "board");
+        board.timer.stop();
+        ExistingFeatureFixture.invoke(board, "eraseCurr");
+        CrossBlock current = new CrossBlock();
+        CrossBlock preview = new CrossBlock();
+        ExistingFeatureFixture.set(board, "curr", current);
+        ExistingFeatureFixture.set(board, "next", preview);
+        ExistingFeatureFixture.set(board, "erasedLineNum", 9);
+        board.x = 4;
+        board.y = 18;
+        ExistingFeatureFixture.invoke(board, "placeBlock");
+        game.drawNextBoard(preview);
+
+        key(game, KeyEvent.VK_B);
+
+        check(board.getScore() == 300,
+            "saved B hard-drop key must lock P and score its two rows");
+        check((int) field(board, "erasedLineNum") == 11,
+            "saved-key P lock must cross the ten-row supply boundary");
+        check(field(board, "curr") == preview,
+            "saved-key P lock must advance the preview once");
+        check(field(board, "next") instanceof ItemBlock,
+            "saved-key P lock must supply the earned item preview");
+        capture(frame, evidence.resolve("final-saved-key-p-lock.png"));
+
+        board.timer.stop();
+        board.timer = null;
+        game.gameOver();
+        key(game, KeyEvent.VK_ENTER);
+        Scoreboardpanel scoreboard = (Scoreboardpanel) field(frame, "scoreboardPanel");
+        check(ScoreStore.readRanked(GameMode.ITEM).equals(java.util.List.of(
+                new ScoreStore.Score("PLAYER", 300, Difficulty.HARD, GameMode.ITEM))),
+            "Hard Item result must retain its mode and difficulty metadata");
+        check(((javax.swing.JTextPane) field(scoreboard, "scorepanel")).getText()
+                .contains("PLAYER: 300 [Hard] [Item]"),
+            "Hard Item result must be visible in the Item scoreboard");
+        capture(frame, evidence.resolve("final-hard-item-score.png"));
+        key(scoreboard, KeyEvent.VK_ENTER);
+        check(scoreboard.getParent() == null,
+            "Hard Item result must return from the scoreboard to the menu");
+    }
+
+    private static void configureAndRender(Maincontainer frame, Path evidence,
+            String size, String palette, String mode, String screenshot) throws Exception {
+        frame.exitStartEnterSetting();
+        while (!frame.setting.getWindowSize().equals(size)) frame.setting.nextWindowSize();
+        while (!frame.setting.getColorPalette().equals(palette)) frame.setting.nextColorPalette();
+        frame.setting.exportSetting();
+        frame.exitSettingEnterStart();
+
+        String[] dimensions = size.split("X");
+        check(frame.getConfiguredHeight() == Integer.parseInt(dimensions[0])
+                && frame.getConfiguredWidth() == Integer.parseInt(dimensions[1]),
+            "actual frame must apply configured size " + size);
+        check(frame.getContentPane().getHeight() == Integer.parseInt(dimensions[0])
+                && frame.getContentPane().getWidth() == Integer.parseInt(dimensions[1]),
+            "rendered content must use configured size " + size);
+        check(frame.setting.getColorPalette().equals(palette)
+                && Maincontainer.colorPalette.equals(palette),
+            "actual frame must apply configured palette " + palette);
+
+        frame.exitStartEnterGame(mode);
+        Gamepanel game = (Gamepanel) field(frame, "gamePanel");
+        Board board = (Board) field(game, "board");
+        board.timer.stop();
+        int originalY = board.y;
+        key(game, Maincontainer.DOWN);
+        check(board.y == originalY + 1 && board.getScore() == 1,
+            palette + " representative game must accept synthetic movement");
+        capture(frame, evidence.resolve(screenshot));
+        key(game, KeyEvent.VK_ESCAPE);
+        check(game.getParent() == null && board.timer == null,
+            palette + " representative game must cleanly return to the menu");
+    }
+
     public static void main(String[] args) throws Exception {
         Path data = Files.createTempDirectory("tetris-desktop-data-");
         Path evidence = Path.of("build/reports/desktop");
@@ -196,8 +279,41 @@ public final class DesktopSmoke {
                 frame.setting.exportSetting();
                 ScoreStore.clear();
                 check(ScoreStore.readRanked().isEmpty(), "reset must remove saved scores");
+
+                Integer[] customKeys = frame.setting.getKeyCodes();
+                customKeys[5] = KeyEvent.VK_B;
+                frame.setting.updateKeyCodes(customKeys);
+                frame.setting.nextDifficulty();
+                frame.setting.nextDifficulty();
+                frame.setting.exportSetting();
+                frame.dispose();
+
+                frame = new Maincontainer();
+                frame.enterStart();
+                savedHardDropItemFlow(frame, evidence);
+
+                configureAndRender(frame, evidence, "600X500", "Normal", "Classic",
+                    "final-600x500-normal-classic.png");
+                configureAndRender(frame, evidence, "750X625", "Protanopia", "Item",
+                    "final-750x625-protanopia-item.png");
+                configureAndRender(frame, evidence, "900X750", "Deuteranopia", "Classic",
+                    "final-900x750-deuteranopia-classic.png");
+                configureAndRender(frame, evidence, "600X500", "Tritanopia", "Item",
+                    "final-600x500-tritanopia-item.png");
+
+                frame.exitStartEnterSetting();
+                frame.setting.clearSetting();
+                frame.setting.exportSetting();
+                frame.exitSettingEnterStart();
+                ScoreStore.clear();
+                check(Maincontainer.HARD_DROP == KeyEvent.VK_SPACE
+                        && Maincontainer.colorPalette.equals("Normal")
+                        && frame.getDifficulty() == Difficulty.EASY
+                        && frame.getConfiguredWidth() == 500
+                        && frame.getConfiguredHeight() == 600,
+                    "desktop smoke must restore global settings before exit");
                 Files.writeString(evidence.resolve("result.txt"),
-                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\n"
+                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload; saved B hard-drop applied after frame recreation; Hard Item P lock/game-over/metadata/menu return; all 3 configured sizes and all 4 palettes rendered across representative Classic/Item games with synthetic movement\n"
                     + "OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version")
                     + " arch=" + System.getProperty("os.arch") + " Java=" + System.getProperty("java.version") + "\n"
                     + "Input=synthetic KeyListener events; physical keyboard and clean target installation remain separate\n");
