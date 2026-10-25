@@ -1,0 +1,60 @@
+{
+  "tests": 95,
+  "failures": 0,
+  "errors": 0,
+  "skipped": 0,
+  "covered": 1499,
+  "missed": 169,
+  "total": 1668,
+  "coverage_percent": 89.86810551558753,
+  "source_commit": "0412df998051416bb75d66e3fa95e7917327bf65",
+  "product_tree": "e54da5673604115d39a5c070d4639dce27861885",
+  "command": "./gradlew --offline --no-daemon --console=plain clean build desktopSmoke packageRelease --rerun-tasks",
+  "duration": "1m 50s",
+  "legacy_result": "RESULT 55/55 passed",
+  "performance_log": "PERFORMANCE core-decisions operations=400000 elapsedMs=26 budgetMs=5000",
+  "desktop_result": "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload; saved B hard-drop applied after frame recreation; Hard Item P lock/game-over/metadata/menu return; all 3 configured sizes and all 4 palettes rendered across representative Classic/Item games with synthetic movement\nOS=Mac OS X 26.6.2 arch=aarch64 Java=21.0.13\nInput=synthetic KeyListener events; physical keyboard and clean target installation remain separate\n",
+  "desktop_pngs": [
+    "all-scores.png",
+    "classic-scores.png",
+    "cross-item-and-preview.png",
+    "final-600x500-normal-classic.png",
+    "final-600x500-tritanopia-item.png",
+    "final-750x625-protanopia-item.png",
+    "final-900x750-deuteranopia-classic.png",
+    "final-hard-item-score.png",
+    "final-saved-key-p-lock.png",
+    "item-scores.png",
+    "scoreboard.png"
+  ],
+  "package_files": [
+    {
+      "file": "seoultech-tetris-0.1.0-macos-aarch64.zip",
+      "bytes": 53776515,
+      "sha256": "0afde423e1346446fef19e988159b6d6c1ce517dcdf516412e41866cd38aad62",
+      "checksum_verified": true,
+      "bundled_jar_matches_current_build": true
+    }
+  ],
+  "block-distribution.csv": {
+    "rows": 21,
+    "all_pass": true
+  },
+  "item-distribution.csv": {
+    "rows": 5,
+    "all_pass": true
+  },
+  "native_launcher": {
+    "archive_sha256": "11c5eddfb7aa0d53fb8521a090335d60d6403a7716351f9fafc5ba5b3795eefd",
+    "unpacked_path_contains_spaces_and_korean": true,
+    "codesign_deep_strict_verified_before_launch": true,
+    "current_jar_verified": true,
+    "actual_packaged_start_window_seen": true,
+    "data_isolated": true,
+    "keyboard_and_full_save_restart": "not established by native UI automation; manual verification still required",
+    "clean_os_install": "not verified",
+    "source_commit": "ea0b4929be38ef60e8021cfd79bcf1a6c3979eb3",
+    "screenshot": "docs/evidence/req2-final/package-start.png",
+    "scope_note": "Launcher startup proof belongs to the earlier ea0b492 ZIP; current package is verified separately above. Product source tree is identical."
+  }
+}

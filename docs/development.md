@@ -47,7 +47,8 @@ $env:JAVA_HOME = 'C:\Program Files\Java\jdk-21'
 자동 테스트는 별도 임시 폴더에서 실행해 두 파일을 변경하지 않는다.
 
 `build`가 만드는 ZIP/TAR와 실행 스크립트는 개발용 산출물이다. 아이콘·런타임을 포함한
-최종 더블클릭 배포 패키지와 깨끗한 Windows/macOS 실행 확인은 RELEASE 카드의 후속 작업이다.
+더블클릭 배포 패키지는 `packageRelease`로 만든다. 깨끗한 Windows/macOS 사용자 환경의
+물리 키·저장 후 재실행은 TEST-06/RELEASE-04의 수동 인수 조건이다.
 
 ## 디렉터리
 
@@ -102,9 +103,10 @@ test_classes=$(mktemp -d)
 뜻하지 않는다. 실제 창·포커스·키 반복·Windows 실행·성능·커버리지 비율은 별도 검증한다.
 기존 reflection/Unsafe 등 컴파일 경고도 이번 기반 구성에서 수정하지 않는다.
 
-JaCoCo를 붙일 때는 Gradle의 JUnit worker만 계측해서는 내부 JVM의 제품 코드 실행이 잡히지 않는다.
-별도 실행기와 내부 검사 JVM까지 agent 적용/실행 데이터 수집을 설계하거나 테스트 실행 구조를 조정하고,
-알려진 제품 메서드가 실제 보고서에 포함되는지 확인해야 한다. 커버리지 구성은 TEST-07에서 진행한다.
+JaCoCo는 Gradle JUnit worker와 기존 회귀 실행기·내부 검사 JVM까지 agent를 전달해 계측한다.
+`LegacyRegressionTest`는 자식 실행 전후 coverage 파일 크기 증가를 확인하고, `check`는
+제품 전체 line coverage 70%를 검사한다. HTML/XML 보고서에서 측정 대상과 실제 실행된
+제품 코드를 확인할 수 있다. 현재 실측값과 최종 제출 조건은 [R2-07 원장](req2-final-verification.md)에 연결한다.
 GitHub push/PR 자동 실행은 아래 CI 구성을 따른다.
 
 ## GitHub Actions CI
@@ -115,8 +117,8 @@ fork에서 처음 사용하는 경우 해당 저장소의 Actions 활성화가 �
 
 | 검사 작업 | 실행 환경 | 명령 |
 |---|---|---|
-| `Build and test (windows-2025)` | Windows Server 2025, PowerShell, Temurin Java 21 | `./gradlew.bat --no-daemon --console=plain build` |
-| `Build and test (macos-26)` | macOS 26, Bash, Temurin Java 21 | `./gradlew --no-daemon --console=plain build` |
+| `Build and test (windows-2025)` | Windows Server 2025, PowerShell, Temurin Java 21 | `./gradlew.bat --no-daemon --console=plain build desktopSmoke packageRelease` |
+| `Build and test (macos-26)` | macOS 26, Bash, Temurin Java 21 | `./gradlew --no-daemon --console=plain build desktopSmoke packageRelease` |
 
 두 작업은 독립 실행된다. 한 OS에서 실패해도 다른 OS의 검사는 계속 진행한다.
 같은 브랜치/PR에 새 변경이 올라오면 이전 실행을 취소하고 최신 변경을 검사한다.
@@ -124,8 +126,9 @@ Gradle Wrapper의 공식 JAR 검증 후 빌드하며, 기존 JUnit 어댑터를 
 검사가 실패하면 해당 작업이 실패로 표시된다. 외부 Action은 확인한 릴리스의 전체 commit SHA로 고정한다.
 
 성공·실패 모두 `test-reports-windows-2025`, `test-reports-macos-26` 아티팩트를 7일간 보관한다.
-실행 화면의 Artifacts에서 다운로드하면 JUnit XML/내부 회귀 로그, HTML 테스트 보고서,
-생성된 Gradle 문제 보고서를 볼 수 있다. 컴파일/환경 준비가 먼저 실패해 보고서가 없으면
+실행 화면의 Artifacts에서 다운로드하면 JUnit XML/내부 회귀 로그, JaCoCo·성능·실제 창 보고서,
+요구사항 2 분포 CSV·팔레트 PNG와 Gradle 문제 보고서를 볼 수 있다. 성공한 OS job의
+`package-<OS>`에는 실행 ZIP과 SHA-256도 보관한다. 컴파일/환경 준비가 먼저 실패해 보고서가 없으면
 아티팩트 미생성 경고와 해당 단계의 로그를 확인한다.
 
 워크플로의 저장소 권한은 `contents: read`이며 checkout 인증 정보는 남기지 않는다.

@@ -1,0 +1,227 @@
+{
+  "schema_version": 1,
+  "checked_date_kst": "2026-10-25",
+  "source_commit": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+  "source_binding": {
+    "requested_source_commit": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+    "pr_head_sha": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+    "pr_head_tree_sha": "f972bcfb73acc4fc951d448e02cfdae36934b6ef",
+    "pr_synthetic_merge_commit_sha": "00ac8065a44f56e0f76401b41b3bddf4a8cada08",
+    "pr_synthetic_merge_tree_sha": "f972bcfb73acc4fc951d448e02cfdae36934b6ef",
+    "source_and_synthetic_merge_trees_identical": true,
+    "origin_run_head_sha": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+    "fork_run_head_sha": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+    "all_artifact_workflow_head_shas": {
+      "origin": [
+        "15e46ec8ff6bfa530eb2da186bdc445517568e15"
+      ],
+      "fork": [
+        "15e46ec8ff6bfa530eb2da186bdc445517568e15"
+      ]
+    }
+  },
+  "runs": {
+    "origin": {
+      "repo": "HoroyoiPeach/SeoulTech-SE-Tetris-Ref",
+      "run_id": 40185986802,
+      "html_url": "https://github.com/HoroyoiPeach/SeoulTech-SE-Tetris-Ref/actions/runs/40185986802",
+      "event": "pull_request",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+      "jobs": [
+        {
+          "id": 121146756400,
+          "name": "Build and test (macos-26)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121146756605,
+          "name": "Build and test (windows-2025)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "fork": {
+      "repo": "CODEhenryKIL/SeoulTech-SE-Tetris-Ref",
+      "run_id": 40185944683,
+      "html_url": "https://github.com/CODEhenryKIL/SeoulTech-SE-Tetris-Ref/actions/runs/40185944683",
+      "event": "push",
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "15e46ec8ff6bfa530eb2da186bdc445517568e15",
+      "jobs": [
+        {
+          "id": 121146627943,
+          "name": "Build and test (windows-2025)",
+          "status": "completed",
+          "conclusion": "success"
+        },
+        {
+          "id": 121146628618,
+          "name": "Build and test (macos-26)",
+          "status": "completed",
+          "conclusion": "success"
+        }
+      ]
+    }
+  },
+  "artifacts": [
+    {
+      "id": 12596127995,
+      "name": "package-macos-26",
+      "digest": "sha256:ea5795cdf0f7b3684d5a057d1ae133edc3d695c9a16c1fb48118e3fc58a9e96e",
+      "expires_at": "2026-11-01T10:47:22Z",
+      "url": "https://github.com/HoroyoiPeach/SeoulTech-SE-Tetris-Ref/actions/runs/40185986802/artifacts/12596127995",
+      "download_sha256": "ea5795cdf0f7b3684d5a057d1ae133edc3d695c9a16c1fb48118e3fc58a9e96e",
+      "digest_verified": true,
+      "packages": [
+        {
+          "file": "seoultech-tetris-0.1.0-macos-aarch64.zip",
+          "bytes": 53602052,
+          "sha256": "bdd11fb2cd95fc8aef3ae9eb918c099db160d9075b2ffedd74944484861dfd79",
+          "checksum_verified": true,
+          "structure_checks": {
+            "has_nonempty_jvm": true,
+            "has_nonempty_launcher": true,
+            "has_nonempty_jar": true,
+            "has_nonempty_icon": true
+          }
+        }
+      ]
+    },
+    {
+      "id": 12595988391,
+      "name": "test-reports-macos-26",
+      "digest": "sha256:7826e97321b88da1d1b7327ebf639d65d5b5ab52692943cc521ef72c17392938",
+      "expires_at": "2026-11-01T10:47:20Z",
+      "url": "https://github.com/HoroyoiPeach/SeoulTech-SE-Tetris-Ref/actions/runs/40185986802/artifacts/12595988391",
+      "download_sha256": "7826e97321b88da1d1b7327ebf639d65d5b5ab52692943cc521ef72c17392938",
+      "digest_verified": true,
+      "junit": {
+        "tests": 95,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "legacy": [
+        {
+          "file": "test-results/test/TEST-seoultech.se.tetris.component.LegacyRegressionTest.xml",
+          "passed": 55,
+          "total": 55
+        }
+      ],
+      "line_coverage": {
+        "file": "reports/jacoco/test/jacocoTestReport.xml",
+        "scope": "report root/all product classes",
+        "covered": 1499,
+        "missed": 169,
+        "total": 1668,
+        "ratio": 0.8986810551558753,
+        "percent": 89.8681
+      },
+      "distribution": {
+        "block_distribution": {
+          "row_count": 21,
+          "all_rows_pass": true
+        },
+        "item_distribution": {
+          "row_count": 5,
+          "all_rows_pass": true
+        }
+      },
+      "desktop": {
+        "results": [
+          {
+            "file": "reports/desktop/result.txt",
+            "text": "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\nOS=Mac OS X 26.6.2 arch=aarch64 Java=21.0.13\nInput=synthetic KeyListener events; physical keyboard and clean target installation remain separate"
+          }
+        ],
+        "desktop_png_count": 5,
+        "artifact_total_png_count": 29
+      }
+    },
+    {
+      "id": 12595628774,
+      "name": "test-reports-windows-2025",
+      "digest": "sha256:a72ec313768899c1a4d03d5f2cdacbbbd13747bc46d5b1f0fbfea8ab89f258f5",
+      "expires_at": "2026-11-01T10:46:38Z",
+      "url": "https://github.com/HoroyoiPeach/SeoulTech-SE-Tetris-Ref/actions/runs/40185986802/artifacts/12595628774",
+      "download_sha256": "a72ec313768899c1a4d03d5f2cdacbbbd13747bc46d5b1f0fbfea8ab89f258f5",
+      "digest_verified": true,
+      "junit": {
+        "tests": 95,
+        "failures": 0,
+        "errors": 0,
+        "skipped": 0
+      },
+      "legacy": [
+        {
+          "file": "test-results/test/TEST-seoultech.se.tetris.component.LegacyRegressionTest.xml",
+          "passed": 55,
+          "total": 55
+        }
+      ],
+      "line_coverage": {
+        "file": "reports/jacoco/test/jacocoTestReport.xml",
+        "scope": "report root/all product classes",
+        "covered": 1499,
+        "missed": 169,
+        "total": 1668,
+        "ratio": 0.8986810551558753,
+        "percent": 89.8681
+      },
+      "distribution": {
+        "block_distribution": {
+          "row_count": 21,
+          "all_rows_pass": true
+        },
+        "item_distribution": {
+          "row_count": 5,
+          "all_rows_pass": true
+        }
+      },
+      "desktop": {
+        "results": [
+          {
+            "file": "reports/desktop/result.txt",
+            "text": "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\nOS=Windows Server 2025 10.0 arch=amd64 Java=21.0.12.1\nInput=synthetic KeyListener events; physical keyboard and clean target installation remain separate"
+          }
+        ],
+        "desktop_png_count": 5,
+        "artifact_total_png_count": 29
+      }
+    },
+    {
+      "id": 12595389184,
+      "name": "package-windows-2025",
+      "digest": "sha256:08dc175cd63d2968512e9492aebd557918f38f5be54c4b47fc10bca7b97e8fd2",
+      "expires_at": "2026-11-01T10:46:40Z",
+      "url": "https://github.com/HoroyoiPeach/SeoulTech-SE-Tetris-Ref/actions/runs/40185986802/artifacts/12595389184",
+      "download_sha256": "08dc175cd63d2968512e9492aebd557918f38f5be54c4b47fc10bca7b97e8fd2",
+      "digest_verified": true,
+      "packages": [
+        {
+          "file": "seoultech-tetris-0.1.0-windows-x64.zip",
+          "bytes": 55852320,
+          "sha256": "aa0025f05f94b1097163496f91193345eb1c5415cdafd8f6a22974665ccdd9a9",
+          "checksum_verified": true,
+          "structure_checks": {
+            "has_nonempty_jvm": true,
+            "has_nonempty_launcher": true,
+            "has_nonempty_jar": true,
+            "has_nonempty_icon": true
+          }
+        }
+      ]
+    }
+  ],
+  "gaps": [
+    "Windows CI ran on Windows Server 2025, not Windows 11.",
+    "Desktop smoke used synthetic KeyListener events; physical keyboard input remains unverified.",
+    "CI verified generated package integrity and structure, but did not prove clean-machine launch from the downloaded package.",
+    "Fork artifact payloads were not downloaded again; fork run/job/artifact metadata were verified, while payload-level evidence comes from the origin PR run bound to the same source commit and identical merge tree."
+  ]
+}

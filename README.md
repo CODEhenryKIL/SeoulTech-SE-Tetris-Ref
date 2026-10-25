@@ -23,6 +23,17 @@ Open `build/reports/tests/test/index.html` for the results.
 See [development instructions](docs/development.md) for setup, test scope,
 and troubleshooting.
 
+## 요구사항 2 평가·검증 자료
+
+- [최종 통합 검증 원장](docs/req2-final-verification.md): 검사 버전·CI·배포물 체크섬·미완료 인수 조건
+- [요구사항 2 추적표](docs/requirements-2-traceability.md): 요구사항→카드→코드→테스트 연결
+- [재사용 평가 체크리스트](docs/evaluation-checklist.md), [우리 팀 평가 결과](docs/evaluations/req2-2026-10-25.md)
+- [아이템 형태·효과·재현 명세](docs/req2-items.md), [모드별 기록 정책](docs/req2-mode-scores.md)
+
+전체 자동 검사는 `./gradlew clean build desktopSmoke packageRelease`로 재현한다.
+그래픽 세션과 JDK 21이 필요하며 Windows에서는 `gradlew.bat`을 사용한다.
+실제 Windows 11·물리 키·사람의 색 식별·깨끗한 환경의 저장/재실행은 원장의 수동 인수 양식으로 확인한다.
+
 ## Original reference-code notes
 
 This code is a very basic implementation of Tetris game.   

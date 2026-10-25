@@ -1,5 +1,13 @@
 # 검증 기록
 
+## R2-07 최종 통합 검증·평가 증빙 (2026-10-25)
+
+- 최신 원장은 [R2-07 최종 검증](req2-final-verification.md), [2차 요구사항 추적표](requirements-2-traceability.md), [90개 평가 결과](evaluations/req2-2026-10-25.md)다. 아래의 이전 절은 각 당시 소스·검증 범위를 보존한 이력이다.
+- 로컬 `0412df9`에서 `clean build desktopSmoke packageRelease --rerun-tasks` 성공(1분50초), JUnit95개 오류0·기존55/55·제품1499/1668=89.87%·핵심400000회26ms/예산5000ms. 제품 변경 없이 저장키 B 재로드→Hard Item P→기록/메뉴, 3크기·4팔레트 실제 창 검사를 보강했다.
+- 원본 PR #20 CI `40185986802`와 fork `40185944683`의 Windows/macOS 성공을 확인했다. `15e46ec`의 원본 아티팩트4개는 GitHub digest와 다운로드 SHA-256을 대조하고 각OS JUnit95·55/55·coverage89.87%·분포21+5행·DesktopSmoke PASS를 확인했다. 이후 DesktopSmoke 보강은 이 CI에 포함되지 않는다.
+- 최종 전체 재실행에는 네이티브 패키지 생성·checksum·내부 JAR 대조를 포함했다. 같은 제품 소스의 앞선 ea0b492 패키지에서 strict 서명·한글/공백 경로 시작창을 확인한 증빙은 별도 버전으로 보존한다. 정확한 실행 ZIP SHA는 원장의 버전별 표와 `docs/evidence/` JSON에 남겼다.
+- 실제 Windows11·사람의 색 구분·패키지 물리 키/완전 재실행·최소사양/장시간GUI·최종main병합 및 이번 보강의 원격CI는 대기다. 원본 GitHub Issues가 꺼져 있고 현재계정 관리자권한이 없어 이슈등록도 보류했다. 등록본문은 준비했으며 없는Issue번호를 성공으로 기재하지 않는다. R2-07 전체를 Done으로 판정하지 않는다.
+
 ## R2-08·10·13 아이템 완성·공급 검증 (2026-10-25)
 
 - 브랜치: `feat/req2-items-and-supply`, 시작점은 모드별 기록 `3a2620d`다. 이전 PR #18·#19의 변경을 포함하며 아직 main 병합 결과를 뜻하지 않는다.
