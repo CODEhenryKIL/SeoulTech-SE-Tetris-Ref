@@ -16,6 +16,7 @@ import javax.swing.SwingUtilities;
 import javax.swing.Timer;
 import javax.imageio.ImageIO;
 import seoultech.se.tetris.Difficulty;
+import seoultech.se.tetris.GameMode;
 import seoultech.se.tetris.blocks.Block;
 import sun.misc.Unsafe;
 
@@ -27,12 +28,16 @@ final class ExistingFeatureFixture implements AutoCloseable {
     private final Timer initialTimer;
 
     ExistingFeatureFixture(Difficulty difficulty) throws Exception {
+        this(difficulty, GameMode.ITEM);
+    }
+
+    ExistingFeatureFixture(Difficulty difficulty, GameMode mode) throws Exception {
         Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
         unsafeField.setAccessible(true);
         owner = (Maincontainer) ((Unsafe) unsafeField.get(null)).allocateInstance(Maincontainer.class);
         owner.setting = owner.new Setting();
         owner.setDifficulty(difficulty);
-        game = new Gamepanel(owner, "Item");
+        game = new Gamepanel(owner, mode);
         board = get(game, "board", Board.class);
         initialTimer = board.timer;
         initialTimer.stop();

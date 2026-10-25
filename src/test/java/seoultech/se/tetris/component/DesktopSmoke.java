@@ -15,6 +15,8 @@ import javax.swing.SwingUtilities;
 import seoultech.se.tetris.score.ScoreStore;
 import seoultech.se.tetris.Difficulty;
 import seoultech.se.tetris.GameMode;
+import seoultech.se.tetris.blocks.CrossBlock;
+import seoultech.se.tetris.blocks.ItemBlock;
 
 /** Real JFrame lifecycle with synthetic listener input; no OS installation/physical-key claim. */
 public final class DesktopSmoke {
@@ -41,6 +43,33 @@ public final class DesktopSmoke {
         try { frame.paint(graphics); }
         finally { graphics.dispose(); }
         ImageIO.write(image, "png", path.toFile());
+    }
+
+    private static void crossItemFlow(Maincontainer frame, Path evidence) throws Exception {
+        frame.exitStartEnterGame("Item");
+        Gamepanel game = (Gamepanel) field(frame, "gamePanel");
+        Board board = (Board) field(game, "board");
+        board.timer.stop();
+        ExistingFeatureFixture.invoke(board, "eraseCurr");
+        CrossBlock current = new CrossBlock();
+        CrossBlock preview = new CrossBlock();
+        ExistingFeatureFixture.set(board, "curr", current);
+        ExistingFeatureFixture.set(board, "next", preview);
+        ExistingFeatureFixture.set(board, "erasedLineNum", 9);
+        board.x = 4;
+        board.y = 18;
+        ExistingFeatureFixture.invoke(board, "placeBlock");
+        game.drawNextBoard(preview);
+        capture(frame, evidence.resolve("cross-item-and-preview.png"));
+
+        key(game, Maincontainer.HARD_DROP);
+
+        check(board.getScore() == 300, "P floor lock must score exactly two cleared rows");
+        check((int) field(board, "erasedLineNum") == 11, "P rows must count toward supply");
+        check(field(board, "curr") == preview, "P preview must become the current block unchanged");
+        check(field(board, "next") instanceof ItemBlock, "crossing ten rows must supply an item preview");
+        key(game, KeyEvent.VK_ESCAPE);
+        check(game.getParent() == null && board.timer == null, "P game must cleanly return to the menu");
     }
 
     public static void main(String[] args) throws Exception {
@@ -75,6 +104,8 @@ public final class DesktopSmoke {
                 check(!board.getIsPaused(), "pause key must resume the game");
                 key(game, KeyEvent.VK_ESCAPE);
                 check(game.getParent() == null && board.timer == null, "active game exit must remove game and timer");
+
+                crossItemFlow(frame, evidence);
 
                 frame.exitStartEnterSetting();
                 frame.setting.nextWindowSize();
@@ -166,7 +197,7 @@ public final class DesktopSmoke {
                 ScoreStore.clear();
                 check(ScoreStore.readRanked().isEmpty(), "reset must remove saved scores");
                 Files.writeString(evidence.resolve("result.txt"),
-                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\n"
+                    "PASS real JFrame, menu loop, repeated input, pause/resume, active exit, P item/preview/300-point lock/ten-row supply, settings save/reload, ranking/reset, game-over to scoreboard, mode filters and mode-specific qualification/save/reload\n"
                     + "OS=" + System.getProperty("os.name") + " " + System.getProperty("os.version")
                     + " arch=" + System.getProperty("os.arch") + " Java=" + System.getProperty("java.version") + "\n"
                     + "Input=synthetic KeyListener events; physical keyboard and clean target installation remain separate\n");

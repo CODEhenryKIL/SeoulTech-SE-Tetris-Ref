@@ -8,7 +8,10 @@ public class ColumnBlock extends ItemBlock {
     private int itemY;
     
     public ColumnBlock() {
-        Random random = new Random();
+        this(new Random());
+    }
+
+    ColumnBlock(Random random) {
         int block = random.nextInt(7);
         Block newBlock;
         switch (block) {

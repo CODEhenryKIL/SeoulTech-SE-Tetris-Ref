@@ -100,7 +100,7 @@ public class Nextblockpanel extends JComponent{
             textChunks = new ArrayList<>();
 			for (String str : text.split("")) {
                 Color c = color;
-                if (!str.equals("O")) c = Color.WHITE;
+                if (!str.equals("O") && !str.equals("P")) c = Color.WHITE;
 				textChunks.add(new TextChunk(str, c));
 			}
 		}

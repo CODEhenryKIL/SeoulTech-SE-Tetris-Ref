@@ -31,6 +31,7 @@ import seoultech.se.tetris.blocks.ColumnBlock;
 import seoultech.se.tetris.blocks.ItemBlock;
 import seoultech.se.tetris.blocks.RowBlock;
 import seoultech.se.tetris.blocks.BlockGenerator;
+import seoultech.se.tetris.blocks.CrossBlock;
 import seoultech.se.tetris.Difficulty;
 import seoultech.se.tetris.GameMode;
 import seoultech.se.tetris.rules.CollisionRules;
@@ -57,6 +58,7 @@ public class Board extends JComponent {
 	private int score = 0;
 	private Block next;
 	private int erasedLineNum = 0;
+    private int pendingItems;
 	private int level = 1;
     private final java.util.BitSet clearingRows = new java.util.BitSet(HEIGHT);
     private Timer clearAnimationTimer;
@@ -90,6 +92,7 @@ public class Board extends JComponent {
 	}
 
 	protected void boardStart() {
+        pendingItems = 0;
 		curr = blockGenerator.nextBlock(gamepanel.getDifficulty());
 		next = blockGenerator.nextBlock(gamepanel.getDifficulty());
 		this.gamepanel.drawNextBoard(next);
@@ -149,7 +152,9 @@ public class Board extends JComponent {
 			for(int i=0; i<curr.width(); i++) {
 				if (curr.getShape(i, j) > 0) {
 					board[y+j][x+i] += curr.getShape(i, j);
-					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk(curr.getText(i, j), curr.getText(i, j).equals("O") ? curr.getColor() : Color.WHITE));
+					String marker = curr.getText(i, j);
+					textChunks.set((y+j+1)*(WIDTH+3)+x+i+1, new TextChunk(marker,
+                        marker.equals("O") || marker.equals("P") ? curr.getColor() : Color.WHITE));
 				}
 			}
 		}
@@ -194,7 +199,7 @@ public class Board extends JComponent {
 	}
 
 	private int[] rotationPosition() {
-		if (curr instanceof AnchorBlock) return null;
+		if (curr instanceof AnchorBlock || curr instanceof BombBlock) return null;
 		return CollisionRules.rotationPosition(board, curr, x, y);
 	}
 
@@ -232,8 +237,15 @@ public class Board extends JComponent {
 		if (isgameover()) return false;
 		curr = next;
         anchorTouched = false;
-        next = gamepanel.getGameMode() == GameMode.ITEM && erasedLineNum / 10 > clearedBefore / 10
-            ? blockGenerator.nextItemBlock() : blockGenerator.nextBlock(gamepanel.getDifficulty());
+        if (gamepanel.getGameMode() == GameMode.ITEM) {
+            pendingItems += erasedLineNum / 10 - clearedBefore / 10;
+        }
+        if (gamepanel.getGameMode() == GameMode.ITEM && pendingItems > 0) {
+            next = blockGenerator.nextItemBlock();
+            pendingItems--;
+        } else {
+            next = blockGenerator.nextBlock(gamepanel.getDifficulty());
+        }
 		this.gamepanel.drawNextBoard(next);
 
 		x = 3;
@@ -264,6 +276,8 @@ public class Board extends JComponent {
 					textChunks.set(idx, new TextChunk(" ", Color.WHITE));
 				}
 			}
+		} else if (curr instanceof CrossBlock) {
+            return eraseCrossLines();
 		} else if (curr instanceof RowBlock) {
 			int itemY = ((RowBlock)curr).getItemY();
 			return eraseRowLine(y + itemY);
@@ -307,6 +321,7 @@ public class Board extends JComponent {
 	
 	protected void reset() {
 		this.board = new int[HEIGHT][WIDTH];
+        pendingItems = 0;
 	}
 
 	protected void eraseLine() {
@@ -369,6 +384,7 @@ public class Board extends JComponent {
 
     void stopAnimations() {
         stopClearAnimation();
+        pendingItems = 0;
         if (itemAnimationTimer != null) itemAnimationTimer.stop();
         itemAnimationTimer = null;
         resumeAfterItemAnimation = false;
@@ -385,6 +401,55 @@ public class Board extends JComponent {
         if (!normalRows.isEmpty()) animateClearedRows(normalRows);
         removeRows(rows);
         return true;
+    }
+
+    private boolean eraseCrossLines() {
+        int firstRow = y;
+        int firstColumn = x;
+        BitSet rows = completedRows();
+        rows.set(firstRow, firstRow + 2);
+        if (!eraseCrossAnimation(firstRow, firstColumn)) return false;
+        // Columns refer to the original grid; compact rows only after their cells are cleared.
+        for (int row = 0; row < HEIGHT; row++) {
+            for (int column = firstColumn; column < firstColumn + 2; column++) {
+                board[row][column] = 0;
+                textChunks.set((row + 1) * (WIDTH + 3) + column + 1,
+                    new TextChunk(" ", Color.WHITE));
+            }
+        }
+        BitSet normalRows = (BitSet) rows.clone();
+        normalRows.clear(firstRow, firstRow + 2);
+        if (!normalRows.isEmpty()) animateClearedRows(normalRows);
+        removeRows(rows);
+        return true;
+    }
+
+    private boolean eraseCrossAnimation(int firstRow, int firstColumn) {
+        for (int row = 0; row < HEIGHT; row++) {
+            for (int column = 0; column < WIDTH; column++) {
+                if ((row >= firstRow && row < firstRow + 2)
+                        || (column >= firstColumn && column < firstColumn + 2)) {
+                    textChunks.set((row + 1) * (WIDTH + 3) + column + 1,
+                        new TextChunk("O", Color.WHITE));
+                }
+            }
+        }
+        return runItemAnimation(HEIGHT / 2, frame -> {
+            if (frame < WIDTH / 2) {
+                for (int row = firstRow; row < firstRow + 2; row++) {
+                    for (int column = WIDTH / 2 - frame - 1; column <= WIDTH / 2 + frame; column++) {
+                        textChunks.set((row + 1) * (WIDTH + 3) + column + 1,
+                            new TextChunk(" ", Color.WHITE));
+                    }
+                }
+            }
+            for (int column = firstColumn; column < firstColumn + 2; column++) {
+                for (int row : new int[] {HEIGHT / 2 - frame - 1, HEIGHT / 2 + frame}) {
+                    textChunks.set((row + 1) * (WIDTH + 3) + column + 1,
+                        new TextChunk(" ", Color.WHITE));
+                }
+            }
+        });
     }
 
     private boolean eraseColumnLine(int column) {

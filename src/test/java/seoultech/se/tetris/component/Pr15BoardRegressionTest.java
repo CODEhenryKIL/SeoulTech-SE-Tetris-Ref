@@ -30,6 +30,7 @@ import seoultech.se.tetris.Difficulty;
 import seoultech.se.tetris.blocks.AnchorBlock;
 import seoultech.se.tetris.blocks.Block;
 import seoultech.se.tetris.blocks.ColumnBlock;
+import seoultech.se.tetris.blocks.CrossBlock;
 import seoultech.se.tetris.blocks.ItemBlock;
 import seoultech.se.tetris.blocks.OBlock;
 import seoultech.se.tetris.blocks.RowBlock;
@@ -61,14 +62,15 @@ class Pr15BoardRegressionTest {
         }
     }
 
-    @Test
+    @ParameterizedTest(name = "{0} pause retained")
+    @EnumSource(value = AnimatedItem.class, names = {"ROW", "CROSS"})
     @Timeout(3)
-    @DisplayName("BUG03-1: 행 아이템 애니메이션 도중 일시정지하면 완료 후에도 정지 상태 유지")
-    void rowItemAnimationKeepsPauseRequestedDuringAnimation() throws Exception {
+    @DisplayName("아이템 애니메이션 도중 일시정지하면 완료 후에도 정지 상태 유지")
+    void itemAnimationKeepsPauseRequestedDuringAnimation(AnimatedItem item) throws Exception {
         GameFixture fixture = onEdt(() -> new GameFixture(Difficulty.NORMAL, "Item"));
         try (fixture) {
             onEdt(() -> {
-                prepareActiveBlock(fixture.board, new RowBlock(), new OBlock(),
+                prepareActiveBlock(fixture.board, item.createBlock(), new OBlock(),
                     new int[20][10], 3, 8);
                 startSlowGameTimer(fixture.board);
 
@@ -128,6 +130,7 @@ class Pr15BoardRegressionTest {
                 int landingY = 20 - active.height();
                 prepareActiveBlock(fixture.board, active, queued,
                     new int[20][10], 3, landingY);
+                set(fixture.board, "pendingItems", 1);
                 startSlowGameTimer(fixture.board);
                 AtomicReference<Throwable> callbackFailure = new AtomicReference<>();
 
@@ -146,6 +149,7 @@ class Pr15BoardRegressionTest {
                 assertSame(queued, field(fixture.board, "next", Block.class));
                 assertEquals(0, fixture.board.getScore());
                 assertEquals(0, intField(fixture.board, "erasedLineNum"));
+                assertEquals(0, intField(fixture.board, "pendingItems"));
                 assertNull(field(fixture.board, "itemAnimationTimer", Timer.class));
                 assertNull(field(fixture.board, "currentLoop", java.awt.SecondaryLoop.class));
                 return null;
@@ -153,14 +157,15 @@ class Pr15BoardRegressionTest {
         }
     }
 
-    @Test
+    @ParameterizedTest(name = "{0} input guard")
+    @EnumSource(value = AnimatedItem.class, names = {"ROW", "CROSS"})
     @Timeout(5)
     @DisplayName("BUG03-1: 아이템 애니메이션 중 모든 블록 입력은 확정·점수·위치 변경 없음")
-    void movementInputsAreIgnoredUntilItemAnimationFinishes() throws Exception {
+    void movementInputsAreIgnoredUntilItemAnimationFinishes(AnimatedItem item) throws Exception {
         GameFixture fixture = onEdt(() -> new GameFixture(Difficulty.NORMAL, "Item"));
         try (fixture) {
             onEdt(() -> {
-                RowBlock active = new RowBlock();
+                Block active = item.createBlock();
                 Block queued = new OBlock();
                 int landingY = 20 - active.height();
                 prepareActiveBlock(fixture.board, active, queued,
@@ -193,21 +198,22 @@ class Pr15BoardRegressionTest {
                 assertNoCallbackFailure(callbackFailure);
                 assertSame(queued, field(fixture.board, "curr", Block.class),
                     "완료 후에는 정확히 한 번만 다음 블록으로 진행해야 합니다.");
-                assertEquals(100, fixture.board.getScore());
-                assertEquals(1, intField(fixture.board, "erasedLineNum"));
+                assertEquals(item == AnimatedItem.CROSS ? 300 : 100, fixture.board.getScore());
+                assertEquals(item == AnimatedItem.CROSS ? 2 : 1, intField(fixture.board, "erasedLineNum"));
                 return null;
             });
         }
     }
 
-    @Test
+    @ParameterizedTest(name = "{0} pause and resume")
+    @EnumSource(value = AnimatedItem.class, names = {"ROW", "CROSS"})
     @Timeout(5)
     @DisplayName("BUG03-1: 같은 애니메이션 안에서 일시정지·재개해도 완료 전 낙하 금지")
-    void pauseThenResumeDuringOneAnimationStartsDropOnlyAfterCompletion() throws Exception {
+    void pauseThenResumeDuringOneAnimationStartsDropOnlyAfterCompletion(AnimatedItem item) throws Exception {
         GameFixture fixture = onEdt(() -> new GameFixture(Difficulty.NORMAL, "Item"));
         try (fixture) {
             onEdt(() -> {
-                prepareActiveBlock(fixture.board, new RowBlock(), new OBlock(),
+                prepareActiveBlock(fixture.board, item.createBlock(), new OBlock(),
                     new int[20][10], 3, 8);
                 startSlowGameTimer(fixture.board);
                 AtomicBoolean pauseRan = new AtomicBoolean();
@@ -599,6 +605,9 @@ class Pr15BoardRegressionTest {
         },
         COLUMN {
             @Override Block createBlock() { return new ColumnBlock(); }
+        },
+        CROSS {
+            @Override Block createBlock() { return new CrossBlock(); }
         };
 
         abstract Block createBlock();
