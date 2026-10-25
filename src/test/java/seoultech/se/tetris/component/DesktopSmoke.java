@@ -125,8 +125,14 @@ public final class DesktopSmoke {
     private static void configureAndRender(Maincontainer frame, Path evidence,
             String size, String palette, String mode, String screenshot) throws Exception {
         frame.exitStartEnterSetting();
-        while (!frame.setting.getWindowSize().equals(size)) frame.setting.nextWindowSize();
-        while (!frame.setting.getColorPalette().equals(palette)) frame.setting.nextColorPalette();
+        for (int attempt = 0; attempt < 3 && !frame.setting.getWindowSize().equals(size); attempt++) {
+            frame.setting.nextWindowSize();
+        }
+        check(frame.setting.getWindowSize().equals(size), "configured size must exist: " + size);
+        for (int attempt = 0; attempt < 4 && !frame.setting.getColorPalette().equals(palette); attempt++) {
+            frame.setting.nextColorPalette();
+        }
+        check(frame.setting.getColorPalette().equals(palette), "configured palette must exist: " + palette);
         frame.setting.exportSetting();
         frame.exitSettingEnterStart();
 
